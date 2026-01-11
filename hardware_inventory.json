@@ -1,0 +1,12 @@
+{
+  "pve-mock-1": {
+    "manufacturer": "Dell Inc.",
+    "productName": "PowerEdge R730xd",
+    "cpuModel": "Intel(R) Xeon(R) CPU E5-2630 v3 @ 2.40GHz"
+  },
+  "pve-mock-2": {
+    "manufacturer": "Supermicro",
+    "productName": "Super Server",
+    "cpuModel": "AMD EPYC 7763 64-Core Processor"
+  }
+}
