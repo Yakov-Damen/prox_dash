@@ -153,6 +153,9 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
       return basicNode;
     }));
 
+    // Sort nodes alphabetically
+    nodes.sort((a, b) => a.node.localeCompare(b.node, undefined, { numeric: true }));
+
     return {
       name: config.name,
       nodes
