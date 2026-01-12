@@ -172,8 +172,85 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
   }
 }
 
+// ... types
+
+export interface VMStatus {
+  vmid: number;
+  name: string;
+  status: 'running' | 'stopped' | 'paused';
+  cpus: number;
+  maxmem: number; // bytes
+  mem: number; // bytes used
+  uptime: number;
+  type: 'qemu' | 'lxc';
+}
+
+// ... existing code ...
+
+export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Promise<VMStatus[]> {
+  try {
+     const headers: HeadersInit = {
+        'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
+     };
+      
+      if (config.allowInsecure) {
+         process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+      }
+
+    // Fetch QEMU (VMs)
+    const qemuRes = await fetch(`${config.url}/api2/json/nodes/${node}/qemu`, { headers });
+    const lxcRes = await fetch(`${config.url}/api2/json/nodes/${node}/lxc`, { headers });
+
+     if (config.allowInsecure) {
+         process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
+     }
+
+    let vms: VMStatus[] = [];
+
+    if (qemuRes.ok) {
+        const json = await qemuRes.json();
+        const qemus = json.data.map((vm: any) => ({
+            vmid: vm.vmid,
+            name: vm.name,
+            status: vm.status,
+            cpus: vm.cpus,
+            maxmem: vm.maxmem,
+            mem: vm.mem || 0,
+            uptime: vm.uptime || 0,
+            type: 'qemu'
+        }));
+        vms = [...vms, ...qemus];
+    }
+
+    if (lxcRes.ok) {
+        const json = await lxcRes.json();
+        const lxcs = json.data.map((vm: any) => ({
+            vmid: vm.vmid,
+            name: vm.name,
+            status: vm.status,
+            cpus: vm.cpus,
+            maxmem: vm.maxmem,
+            mem: vm.mem || 0,
+            uptime: vm.uptime || 0,
+            type: 'lxc'
+        }));
+        vms = [...vms, ...lxcs];
+    }
+
+    // Sort by VMID
+    vms.sort((a, b) => a.vmid - b.vmid);
+    
+    return vms;
+
+  } catch (e) {
+    console.error(`Failed to fetch VMs for node ${node}`, e);
+    return [];
+  }
+}
+
 export async function getAllClustersStatus(): Promise<ClusterStatus[]> {
   const configs = getClusterConfigs();
   const promises = configs.map(config => fetchClusterStatus(config));
   return Promise.all(promises);
 }
+
