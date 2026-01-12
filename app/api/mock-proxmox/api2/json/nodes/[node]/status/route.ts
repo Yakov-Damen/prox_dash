@@ -25,7 +25,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ node
         cores: 32,
         cpus: 64
       },
-      kversion: "Linux 6.8.4-2-pve",
+      kversion: "Linux 6.8.4-2-pve #1 SMP PREEMPT_DYNAMIC PVE 6.8.4-2 (2024-04-10T17:36Z)",
       memory: {
         total: 135000000000,
         used: 45000000000,

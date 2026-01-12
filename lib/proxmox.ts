@@ -143,7 +143,8 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
                basicNode.cpuCores = d.cpuinfo.cores;
              }
              if (d.kversion) {
-               basicNode.kernelVersion = d.kversion;
+               // Clean up kernel version: "Linux 5.4... #1 SMP..." -> "Linux 5.4..."
+               basicNode.kernelVersion = d.kversion.split(' #')[0];
              }
            }
         } catch (e) {
