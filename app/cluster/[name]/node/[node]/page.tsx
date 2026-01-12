@@ -3,16 +3,16 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, AlertCircle, Box, Monitor, Clock, Cpu, HardDrive } from 'lucide-react';
+import { ArrowLeft, RefreshCw, AlertCircle, Box, Monitor, Clock, Cpu, HardDrive, Server } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VMStatus, NodeStatus, ClusterStatus } from '@/lib/proxmox';
 
 function StatusBadge({ status }: { status: string }) {
-  const isRunning = status === 'running';
+  const isGood = status === 'running' || status === 'online';
   return (
     <span className={cn(
       "px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider",
-      isRunning ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-slate-800 text-slate-500 border border-slate-700"
+      isGood ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-slate-800 text-slate-500 border border-slate-700"
     )}>
       {status}
     </span>
