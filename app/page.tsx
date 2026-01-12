@@ -84,15 +84,15 @@ function NodeCard({ node }: { node: NodeStatus }) {
              <ResourceBar 
                label="Memory" 
                percentage={(node.mem / node.maxmem) * 100}
-               displayMain={formatBytes(node.mem)}
-               displaySub={`/ ${formatBytes(node.maxmem)}`}
+               displayMain={`${((node.mem / node.maxmem) * 100).toFixed(1)}%`}
+               displaySub={`${formatBytes(node.mem)} / ${formatBytes(node.maxmem)}`}
                colorClass="bg-emerald-500" 
              />
              <ResourceBar 
                label="Storage" 
                percentage={(node.disk || 0) / (node.maxdisk || 1) * 100}
-               displayMain={formatBytes(node.disk || 0)}
-               displaySub={`/ ${formatBytes(node.maxdisk || 0)}`}
+               displayMain={`${((node.disk || 0) / (node.maxdisk || 1) * 100).toFixed(1)}%`}
+               displaySub={`${formatBytes(node.disk || 0)} / ${formatBytes(node.maxdisk || 1)}`}
                colorClass="bg-amber-500" 
              />
           </div>
