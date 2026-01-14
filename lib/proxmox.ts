@@ -108,8 +108,9 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
         maxdisk: node.maxdisk,
       };
 
-      // Check inventory
-      const inv = inventory[node.node];
+      // Check inventory (Hierarchical: Cluster -> Node, or Flat Fallback)
+      const inv = inventory[config.name]?.[node.node] || inventory[node.node];
+      
       if (inv) {
         if (inv.manufacturer) basicNode.manufacturer = inv.manufacturer;
         if (inv.productName) basicNode.productName = inv.productName;
