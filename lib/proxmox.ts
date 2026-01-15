@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
+import { logger } from './logger';
 
 export interface ProxmoxClusterConfig {
   name: string;
@@ -40,13 +41,13 @@ const CONFIG_PATH = path.join(process.cwd(), 'proxmox_config.json');
 export function getClusterConfigs(): ProxmoxClusterConfig[] {
   try {
     if (!fs.existsSync(CONFIG_PATH)) {
-      console.warn("Config file not found:", CONFIG_PATH);
+      logger.warn({ path: CONFIG_PATH }, "Config file not found");
       return [];
     }
     const fileContent = fs.readFileSync(CONFIG_PATH, 'utf-8');
     return JSON.parse(fileContent);
   } catch (error) {
-    console.error("Error reading config:", error);
+    logger.error({ err: error }, "Error reading config");
     return [];
   }
 }
@@ -58,7 +59,7 @@ function getHardwareInventory(): Record<string, any> {
     if (!fs.existsSync(INVENTORY_PATH)) return {};
     return JSON.parse(fs.readFileSync(INVENTORY_PATH, 'utf-8'));
   } catch (e) {
-    console.error("Failed to read hardware inventory", e);
+    logger.error({ err: e }, "Failed to read hardware inventory");
     return {};
   }
 }
@@ -149,7 +150,7 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
              }
            }
         } catch (e) {
-          console.warn(`Failed to fetch details for node ${node.node}`, e);
+          logger.warn({ err: e, node: node.node }, "Failed to fetch details for node");
         }
       }
       return basicNode;
@@ -164,7 +165,7 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
     };
 
   } catch (error: any) {
-    console.error(`Failed to fetch cluster ${config.name}:`, error);
+    logger.error({ err: error, cluster: config.name }, "Failed to fetch cluster");
     return {
       name: config.name,
       nodes: [],
@@ -244,7 +245,7 @@ export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Pr
     return vms;
 
   } catch (e) {
-    console.error(`Failed to fetch VMs for node ${node}`, e);
+    logger.error({ err: e, node }, "Failed to fetch VMs for node");
     return [];
   }
 }
