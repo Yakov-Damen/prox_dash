@@ -45,7 +45,9 @@ export function getClusterConfigs(): ProxmoxClusterConfig[] {
       return [];
     }
     const fileContent = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    return JSON.parse(fileContent);
+    const configs = JSON.parse(fileContent);
+    logger.debug({ count: configs.length }, "Loaded cluster configs");
+    return configs;
   } catch (error) {
     logger.error({ err: error }, "Error reading config");
     return [];
@@ -68,6 +70,7 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
   try {
     // ... (existing api url setup)
     const apiUrl = `${config.url}/api2/json/nodes`;
+    logger.info({ cluster: config.name, url: config.url }, "Starting cluster fetch");
     const inventory = getHardwareInventory();
 
     // ... (rest of setup)
@@ -111,6 +114,9 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
 
       // Check inventory (Hierarchical: Cluster -> Node, or Flat Fallback)
       const inv = inventory[config.name]?.[node.node] || inventory[node.node];
+      if (!inv) {
+         logger.debug({ cluster: config.name, node: node.node }, "No hardware inventory found for node");
+      }
       
       if (inv) {
         if (inv.manufacturer) basicNode.manufacturer = inv.manufacturer;
@@ -122,6 +128,7 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
       // If online, try to fetch detailed status for hardware info
       if (node.status === 'online') {
         try {
+          logger.debug({ node: node.node }, "Fetching hardware status for node");
           const detailUrl = `${config.url}/api2/json/nodes/${node.node}/status`;
           // Reuse headers logic
           const headers: HeadersInit = {
@@ -158,6 +165,8 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
 
     // Sort nodes alphabetically
     nodes.sort((a, b) => a.node.localeCompare(b.node, undefined, { numeric: true }));
+
+    logger.info({ cluster: config.name, nodeCount: nodes.length }, "Successfully fetched cluster status");
 
     return {
       name: config.name,
@@ -199,7 +208,8 @@ export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Pr
          process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
       }
 
-    // Fetch QEMU (VMs)
+     // Fetch QEMU (VMs)
+    logger.info({ node, cluster: config.name }, "Fetching VMs for node");
     const qemuRes = await fetch(`${config.url}/api2/json/nodes/${node}/qemu`, { headers });
     const lxcRes = await fetch(`${config.url}/api2/json/nodes/${node}/lxc`, { headers });
 
@@ -241,6 +251,8 @@ export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Pr
 
     // Sort by VMID
     vms.sort((a, b) => a.vmid - b.vmid);
+    
+    logger.info({ node, vmCount: vms.length }, "Fetched VMs for node");
     
     return vms;
 
