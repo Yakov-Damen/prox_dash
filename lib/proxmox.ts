@@ -36,6 +36,32 @@ export interface ClusterStatus {
   error?: string;
 }
 
+// Optimization: Cache static hardware info to avoid N+1 API calls
+interface NodeHardwareCache {
+  cpuModel?: string;
+  cpuSockets?: number;
+  cpuCores?: number;
+  kernelVersion?: string;
+  timestamp: number;
+}
+
+const nodeHardwareCache: Record<string, NodeHardwareCache> = {};
+const CACHE_TTL = 1000 * 60 * 60; // 1 hour
+
+// Optimization: Reuse HTTPS agents to avoid repetitive SSL handshakes
+const agentCache: Record<string, https.Agent> = {};
+
+function getAgent(config: ProxmoxClusterConfig): https.Agent {
+  const key = config.name;
+  if (!agentCache[key]) {
+      agentCache[key] = new https.Agent({
+          rejectUnauthorized: !config.allowInsecure,
+          keepAlive: true, // Reuse connections
+      });
+  }
+  return agentCache[key];
+}
+
 const CONFIG_PATH = path.join(process.cwd(), 'proxmox_config.json');
 
 export function getClusterConfigs(): ProxmoxClusterConfig[] {
@@ -74,11 +100,12 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
     const inventory = getHardwareInventory();
 
     // ... (rest of setup)
-    const agent = new https.Agent({
-      rejectUnauthorized: !config.allowInsecure
-    });
+    const agent = getAgent(config);
 
-    // WORKAROUND for self-signed certs in Node fetch:
+    // WORKAROUND for self-signed certs:
+    // Ideally we should use the agent's rejectUnauthorized, but
+    // native fetch might need this env var or a custom dispatcher.
+    // Keeping this for safety with native fetch, but adding Agent for libraries that support it.
     if (config.allowInsecure) {
         process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
     }
@@ -87,6 +114,8 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
         headers: {
             'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
         },
+        // @ts-ignore - Pass agent for potential support (node-fetch compatibility)
+        agent: agent, 
     });
     
     if (config.allowInsecure) {
@@ -112,6 +141,13 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
         maxdisk: node.maxdisk,
       };
 
+      logger.debug({ 
+          node: node.node, 
+          status: node.status, 
+          cpu: node.cpu, 
+          mem: node.mem 
+      }, "Node basic status from list");
+
       // Check inventory (Hierarchical: Cluster -> Node, or Flat Fallback)
       const inv = inventory[config.name]?.[node.node] || inventory[node.node];
       if (!inv) {
@@ -127,38 +163,73 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
 
       // If online, try to fetch detailed status for hardware info
       if (node.status === 'online') {
-        try {
-          logger.debug({ node: node.node }, "Fetching hardware status for node");
-          const detailUrl = `${config.url}/api2/json/nodes/${node.node}/status`;
-          // Reuse headers logic
-          const headers: HeadersInit = {
-              'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
-          };
-          
-          if (config.allowInsecure) {
-             process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-          }
-           const res = await fetch(detailUrl, { headers });
-           if (config.allowInsecure) {
-             process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
-           }
+          // Check Cache First
+          const cacheKey = `${config.name}-${node.node}`;
+          const cached = nodeHardwareCache[cacheKey];
+          const now = Date.now();
 
-           if (res.ok) {
-             const detailJson = await res.json();
-             const d = detailJson.data;
-             if (d.cpuinfo) {
-               basicNode.cpuModel = d.cpuinfo.model;
-               basicNode.cpuSockets = d.cpuinfo.sockets;
-               basicNode.cpuCores = d.cpuinfo.cores;
-             }
-             if (d.kversion) {
-               // Clean up kernel version: "Linux 5.4... #1 SMP..." -> "Linux 5.4..."
-               basicNode.kernelVersion = d.kversion.split(' #')[0];
-             }
-           }
-        } catch (e) {
-          logger.warn({ err: e, node: node.node }, "Failed to fetch details for node");
-        }
+          if (cached && (now - cached.timestamp < CACHE_TTL)) {
+              // Cache HIT
+              if (cached.cpuModel) basicNode.cpuModel = cached.cpuModel;
+              if (cached.cpuSockets) basicNode.cpuSockets = cached.cpuSockets;
+              if (cached.cpuCores) basicNode.cpuCores = cached.cpuCores;
+              if (cached.kernelVersion) basicNode.kernelVersion = cached.kernelVersion;
+          } else {
+              // Cache MISS - Fetch Details
+              try {
+                logger.debug({ node: node.node }, "Fetching hardware status for node (Cache MISS)");
+                const detailUrl = `${config.url}/api2/json/nodes/${node.node}/status`;
+                // Reuse headers logic
+                const headers: HeadersInit = {
+                    'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
+                };
+                
+                if (config.allowInsecure) {
+                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+                }
+                
+                // Use the same agent
+                const res = await fetch(detailUrl, { 
+                    headers,
+                    // @ts-ignore
+                    agent: agent
+                });
+                
+                if (config.allowInsecure) {
+                    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1';
+                }
+
+                if (res.ok) {
+                    const detailJson = await res.json();
+                    const d = detailJson.data;
+                    
+                    const newCache: NodeHardwareCache = {
+                        timestamp: now
+                    };
+
+                    if (d.cpuinfo) {
+                        basicNode.cpuModel = d.cpuinfo.model;
+                        basicNode.cpuSockets = d.cpuinfo.sockets;
+                        basicNode.cpuCores = d.cpuinfo.cores;
+                        
+                        newCache.cpuModel = d.cpuinfo.model;
+                        newCache.cpuSockets = d.cpuinfo.sockets;
+                        newCache.cpuCores = d.cpuinfo.cores;
+                    }
+                    if (d.kversion) {
+                        // Clean up kernel version: "Linux 5.4... #1 SMP..." -> "Linux 5.4..."
+                        const kver = d.kversion.split(' #')[0];
+                        basicNode.kernelVersion = kver;
+                        newCache.kernelVersion = kver;
+                    }
+                    
+                    // Update Cache
+                    nodeHardwareCache[cacheKey] = newCache;
+                }
+              } catch (e) {
+                logger.warn({ err: e, node: node.node }, "Failed to fetch details for node");
+              }
+          }
       }
       return basicNode;
     }));
@@ -232,6 +303,8 @@ export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Pr
             type: 'qemu'
         }));
         vms = [...vms, ...qemus];
+    } else {
+        logger.warn({ node, status: qemuRes.status, text: qemuRes.statusText }, "Failed to fetch QEMU VMs");
     }
 
     if (lxcRes.ok) {
@@ -247,6 +320,8 @@ export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Pr
             type: 'lxc'
         }));
         vms = [...vms, ...lxcs];
+    } else {
+        logger.warn({ node, status: lxcRes.status, text: lxcRes.statusText }, "Failed to fetch LXC Containers");
     }
 
     // Sort by VMID
