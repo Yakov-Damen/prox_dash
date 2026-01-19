@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+
 import Link from 'next/link';
-import { Activity, Server, Cpu, HardDrive, RefreshCw, AlertCircle, ArrowRight, LayoutGrid } from 'lucide-react';
+import { Activity, Cpu, RefreshCw, ArrowRight, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClusterStatus } from '@/lib/proxmox';
+import { GradientCard } from '@/components/GradientCard';
+import { formatBytes } from '@/lib/status-utils';
+import { useClusterList } from '@/lib/hooks';
 
 function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
   const totalNodes = cluster.nodes.length;
@@ -21,21 +24,9 @@ function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
     
   const memUsagePercent = totalMem > 0 ? (usedMem / totalMem) * 100 : 0;
 
-  // Format bytes helper
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    // Hack to start at GB
-    const gBytes = bytes / Math.pow(1024, 3);
-    if (gBytes < 1024) return gBytes.toFixed(1) + ' GB';
-    return (gBytes / 1024).toFixed(1) + ' TB';
-  };
-
   return (
-    <Link href={`/cluster/${encodeURIComponent(cluster.name)}`} className="block group">
-      <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 hover:border-indigo-500/50 hover:bg-slate-900 transition-all shadow-lg shadow-black/20 h-full flex flex-col">
+    <Link href={`/cluster/${encodeURIComponent(cluster.name)}`} className="block group h-full">
+      <GradientCard className="h-full flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 group-hover:text-indigo-300 transition-colors">
@@ -80,33 +71,16 @@ function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
               <div className="text-xs text-slate-500">{formatBytes(usedMem)} / {formatBytes(totalMem)}</div>
            </div>
         </div>
-      </div>
+      </GradientCard>
     </Link>
   );
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<ClusterStatus[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, loading, refresh } = useClusterList();
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/proxmox');
-      const json = await res.json();
-      setData(json);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 10000); // Poll every 10s
-    return () => clearInterval(interval);
-  }, []);
+  // Handle initial scanning state or empty data
+  const isLoadingInitial = loading && (!data || data.length === 0);
 
   return (
     <main className="min-h-screen bg-slate-950 p-6 md:p-12">
@@ -120,7 +94,7 @@ export default function DashboardPage() {
           </div>
           
           <button 
-            onClick={fetchData}
+            onClick={() => refresh()}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
           >
@@ -129,7 +103,7 @@ export default function DashboardPage() {
           </button>
         </header>
 
-        {loading && data.length === 0 ? (
+        {isLoadingInitial ? (
            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
              <RefreshCw size={40} className="animate-spin mb-4 opacity-50" />
              <p>Scanning clusters...</p>

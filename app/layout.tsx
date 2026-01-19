@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Toaster } from 'sonner';
+import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -17,7 +19,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className={`${inter.className} bg-slate-950 text-slate-50 min-h-screen selection:bg-indigo-500/30`}>
-        {children}
+        <GlobalErrorBoundary>
+          {children}
+          <Toaster theme="dark" position="top-right" />
+        </GlobalErrorBoundary>
       </body>
     </html>
   );
