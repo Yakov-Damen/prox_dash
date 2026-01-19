@@ -1,33 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, AlertCircle, Box, Monitor, Clock, Cpu, HardDrive, Server } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Box, Monitor, Clock, Cpu, HardDrive, Server } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { VMStatus, NodeStatus, ClusterStatus } from '@/lib/proxmox';
-
-function StatusBadge({ status }: { status: string }) {
-  const isGood = status === 'running' || status === 'online';
-  return (
-    <span className={cn(
-      "px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider",
-      isGood ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-slate-800 text-slate-500 border border-slate-700"
-    )}>
-      {status}
-    </span>
-  );
-}
+import { VMStatus } from '@/lib/proxmox';
+import { StatusBadge } from '@/components/StatusBadge';
+import { useNode, useNodeVMs } from '@/lib/hooks';
+import { formatBytes } from '@/lib/status-utils';
 
 function VMTable({ vms }: { vms: VMStatus[] }) {
-  // Format bytes helper
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
 
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-lg shadow-black/20">
@@ -97,43 +79,15 @@ export default function NodePage() {
   const clusterName = decodeURIComponent(params.name as string);
   const nodeName = decodeURIComponent(params.node as string);
   
-  const [nodeData, setNodeData] = useState<NodeStatus | null>(null);
-  const [vms, setVms] = useState<VMStatus[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: nodeData, loading: nodeLoading, refresh: refreshNode } = useNode(clusterName, nodeName);
+  const { data: vms, loading: vmsLoading, refresh: refreshVms } = useNodeVMs(clusterName, nodeName);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      // 1. Fetch Cluster to get Node Details (for Header)
-      const clusterRes = await fetch(`/api/proxmox/cluster/${encodeURIComponent(clusterName)}`);
-      if (clusterRes.ok) {
-        const clusterJson: ClusterStatus = await clusterRes.json();
-        const foundNode = clusterJson.nodes.find(n => n.node === nodeName);
-        if (foundNode) setNodeData(foundNode);
-      }
-
-      // 2. Fetch VMs
-      const vmsRes = await fetch(`/api/proxmox/cluster/${encodeURIComponent(clusterName)}/node/${nodeName}/vms`);
-      if (vmsRes.ok) {
-        const vmsJson = await vmsRes.json();
-        setVms(vmsJson);
-      }
-      
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+  const loading = nodeLoading || vmsLoading;
+  
+  const refreshAll = () => {
+    refreshNode();
+    refreshVms();
   };
-
-  useEffect(() => {
-    if (clusterName && nodeName) {
-      fetchData();
-      const interval = setInterval(fetchData, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [clusterName, nodeName]);
 
   return (
     <main className="min-h-screen bg-slate-950 p-6 md:p-12">
@@ -160,7 +114,7 @@ export default function NodePage() {
           </div>
           
           <button 
-            onClick={fetchData}
+            onClick={refreshAll}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
           >

@@ -1,65 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Server, Grid, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ClusterStatus, NodeStatus } from '@/lib/proxmox';
+import { NodeStatus } from '@/lib/proxmox';
+import { ResourceBar } from '@/components/ResourceBar';
+import { StatusBadge } from '@/components/StatusBadge';
+import { GradientCard } from '@/components/GradientCard';
+import { formatBytes } from '@/lib/status-utils';
+import { useCluster } from '@/lib/hooks';
 
-// --- Shared Components (Ideally should be in a separate file, but inline for now) ---
 
-function ResourceBar({ label, percentage, displayMain, displaySub, colorClass = 'bg-blue-500' }: { 
-  label: string, 
-  percentage: number, 
-  displayMain: string, 
-  displaySub?: string,
-  colorClass?: string 
-}) {
-  return (
-    <div className="w-full">
-      <div className="flex justify-between items-end mb-1.5 text-slate-400">
-        <span className="text-xs font-medium">{label}</span>
-        <div className="text-right">
-          <span className="text-xs font-bold text-slate-200">{displayMain}</span>
-          {displaySub && <span className="text-[10px] text-slate-500 ml-1.5">{displaySub}</span>}
-        </div>
-      </div>
-      <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-        <div 
-          className={cn("h-full transition-all duration-500", colorClass)} 
-          style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const isOnline = status === 'online';
-  return (
-    <span className={cn(
-      "px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider",
-      isOnline ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
-    )}>
-      {status}
-    </span>
-  );
-}
 
 function NodeCard({ node, clusterName }: { node: NodeStatus, clusterName: string }) {
-  // Format bytes helper
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
-
   return (
     <Link href={`/cluster/${encodeURIComponent(clusterName)}/node/${node.node}`} className="block">
-      <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-5 hover:border-indigo-500/50 hover:bg-slate-900 transition-all shadow-lg shadow-black/20 group cursor-pointer">
+      <GradientCard className="group cursor-pointer">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <div className={cn("p-2.5 rounded-lg border border-slate-800/50 transition-colors group-hover:bg-indigo-500/20 group-hover:text-indigo-300", node.status === 'online' ? "bg-indigo-500/10 text-indigo-400" : "bg-slate-800 text-slate-500")}>
@@ -104,7 +61,7 @@ function NodeCard({ node, clusterName }: { node: NodeStatus, clusterName: string
             </div>
           </div>
         )}
-      </div>
+      </GradientCard>
     </Link>
   );
 }
@@ -113,30 +70,7 @@ export default function ClusterPage() {
   const params = useParams();
   const clusterName = decodeURIComponent(params.name as string);
   
-  const [data, setData] = useState<ClusterStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/proxmox/cluster/${encodeURIComponent(clusterName)}`);
-      if (!res.ok) throw new Error("Failed to fetch cluster");
-      const json = await res.json();
-      setData(json);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (clusterName) {
-      fetchData();
-      const interval = setInterval(fetchData, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [clusterName]);
+  const { data, loading, error, refresh } = useCluster(clusterName);
 
   return (
     <main className="min-h-screen bg-slate-950 p-6 md:p-12">
@@ -162,7 +96,7 @@ export default function ClusterPage() {
           </div>
           
           <button 
-            onClick={fetchData}
+            onClick={() => refresh()}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
           >
@@ -176,7 +110,7 @@ export default function ClusterPage() {
              <RefreshCw size={40} className="animate-spin mb-4 opacity-50" />
              <p>Loading cluster data...</p>
            </div>
-        ) : !data ? (
+        ) : error || !data ? (
            <div className="flex flex-col items-center justify-center py-20 text-red-400 border border-red-900/50 bg-red-900/10 rounded-xl">
              <AlertCircle size={40} className="mb-4" />
              <p>Failed to load cluster.</p>
