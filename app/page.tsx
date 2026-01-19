@@ -42,7 +42,14 @@ function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
               <LayoutGrid size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white group-hover:text-indigo-200 transition-colors">{cluster.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xl font-bold text-white group-hover:text-indigo-200 transition-colors">{cluster.name}</h3>
+                {cluster.version && (
+                  <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs border border-slate-700 font-mono">
+                    v{cluster.version}
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-slate-500 flex items-center gap-1.5">
                 <span className={cn("w-2 h-2 rounded-full", onlineNodes === totalNodes ? "bg-emerald-500" : "bg-amber-500")}></span>
                 {onlineNodes} / {totalNodes} Nodes Online
