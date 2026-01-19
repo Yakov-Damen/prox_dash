@@ -34,6 +34,7 @@ export interface ClusterStatus {
   name: string;
   nodes: NodeStatus[];
   error?: string;
+  version?: string;
 }
 
 const CONFIG_PATH = path.join(process.cwd(), 'proxmox_config.json');
@@ -70,6 +71,7 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
   try {
     // ... (existing api url setup)
     const apiUrl = `${config.url}/api2/json/nodes`;
+    const versionUrl = `${config.url}/api2/json/version`;
     logger.info({ cluster: config.name, url: config.url }, "Starting cluster fetch");
     const inventory = getHardwareInventory();
 
@@ -88,7 +90,22 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
             'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
         },
     });
-    
+    // Fetch Version
+    let version = '';
+    try {
+        const verRes = await fetch(versionUrl, {
+            headers: {
+                'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
+            },
+        });
+        if (verRes.ok) {
+            const verJson = await verRes.json();
+            version = verJson.data.version;
+        }
+    } catch (e) {
+        logger.warn({ err: e, cluster: config.name }, "Failed to fetch cluster version");
+    }
+
     if (config.allowInsecure) {
          process.env.NODE_TLS_REJECT_UNAUTHORIZED = '1'; // Restore
     }
@@ -170,7 +187,8 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
 
     return {
       name: config.name,
-      nodes
+      nodes,
+      version
     };
 
   } catch (error: any) {
