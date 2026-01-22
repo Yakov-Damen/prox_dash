@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import https from 'https';
 import { logger } from './logger';
+import fetch, { Response } from 'node-fetch';
 
 export interface ProxmoxClusterConfig {
   name: string;
@@ -94,7 +95,7 @@ function getHardwareInventory(): Record<string, Record<string, HardwareInfo>> {
 }
 
 // Helper to handle fetch with auth and TLS agent
-async function fetchProxmox(url: string, config: ProxmoxClusterConfig) {
+async function fetchProxmox(url: string, config: ProxmoxClusterConfig): Promise<Response> {
   const agent = new https.Agent({
     rejectUnauthorized: !config.allowInsecure
   });
@@ -103,10 +104,10 @@ async function fetchProxmox(url: string, config: ProxmoxClusterConfig) {
     'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
   };
 
-  const fetchOptions = {
+  const fetchOptions: any = {
     headers,
     agent, 
-  } as RequestInit & { agent?: https.Agent };
+  };
 
   try {
     const res = await fetch(url, fetchOptions);
@@ -235,7 +236,7 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
   }
 }
 
-// removed duplicate import
+
 
 export async function getNodeStatus(config: ProxmoxClusterConfig, nodeName: string): Promise<NodeStatus | null> {
   try {

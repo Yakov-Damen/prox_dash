@@ -4,13 +4,13 @@
     "url": "http://localhost:3000/api/mock-proxmox",
     "tokenId": "mock-token",
     "tokenSecret": "mock-secret",
-    "allowInsecure": false
+    "allowInsecure": true
   },
   {
     "name": "2 Mock Cluster",
     "url": "http://localhost:3000/api/mock-proxmox",
     "tokenId": "mock-token",
     "tokenSecret": "mock-secret",
-    "allowInsecure": false
+    "allowInsecure": true
   }
 ]
