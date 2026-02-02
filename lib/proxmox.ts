@@ -43,6 +43,7 @@ export interface VMStatus {
   name: string;
   status: 'running' | 'stopped' | 'paused';
   cpus: number;
+  cpuUsage?: number;
   maxmem: number; // bytes
   mem: number; // bytes used
   uptime: number;
@@ -96,9 +97,10 @@ function getHardwareInventory(): Record<string, Record<string, HardwareInfo>> {
 
 // Helper to handle fetch with auth and TLS agent
 async function fetchProxmox(url: string, config: ProxmoxClusterConfig): Promise<Response> {
-  const agent = new https.Agent({
+  const isHttps = url.toLowerCase().startsWith('https');
+  const agent = isHttps ? new https.Agent({
     rejectUnauthorized: !config.allowInsecure
-  });
+  }) : undefined;
 
   const headers: HeadersInit = {
     'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
@@ -197,6 +199,29 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
              
              if (dParsed.success) {
                  const d = dParsed.data.data;
+                 
+                 // Update with detailed metrics
+                 basicNode.cpu = d.cpu || 0;
+                 // Use cores for maxcpu to be consistent with "Cores" label, 
+                 // but fallback to existing if missing (though schema says cpuinfo is optional)
+                 if (d.cpuinfo?.cores) {
+                     basicNode.maxcpu = d.cpuinfo.cores;
+                 }
+                 
+                 if (d.memory) {
+                    basicNode.mem = d.memory.used;
+                    basicNode.maxmem = d.memory.total;
+                 }
+                 
+                 if (d.rootfs) {
+                    basicNode.disk = d.rootfs.used;
+                    basicNode.maxdisk = d.rootfs.total;
+                 }
+
+                 if (d.uptime) {
+                    basicNode.uptime = d.uptime;
+                 }
+
                  if (d.cpuinfo) {
                     basicNode.cpuModel = d.cpuinfo.model;
                     basicNode.cpuSockets = d.cpuinfo.sockets;
@@ -310,16 +335,48 @@ export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Pr
             const json = await res.json();
             const parsed = ProxmoxVMListResponseSchema.safeParse(json);
             if (parsed.success) {
-                return parsed.data.data.map(vm => ({
-                    vmid: vm.vmid,
-                    name: vm.name,
-                    status: (['running', 'stopped', 'paused'].includes(vm.status) ? vm.status : 'stopped') as 'running' | 'stopped' | 'paused',
-                    cpus: vm.cpus || 0,
-                    maxmem: vm.maxmem || 0,
-                    mem: vm.mem || 0,
-                    uptime: vm.uptime || 0,
-                    type
+                const results = await Promise.all(parsed.data.data.map(async (vm) => {
+                    const basicVM: VMStatus = {
+                        vmid: vm.vmid,
+                        name: vm.name,
+                        status: (['running', 'stopped', 'paused'].includes(vm.status) ? vm.status : 'stopped') as 'running' | 'stopped' | 'paused',
+                        cpus: vm.cpus || 0,
+                        maxmem: vm.maxmem || 0,
+                        mem: vm.mem || 0,
+                        uptime: vm.uptime || 0,
+                        type
+                    };
+
+                    if (basicVM.status === 'running') {
+                       try {
+                           const statusUrl = `${config.url}/api2/json/nodes/${node}/${type}/${vm.vmid}/status/current`;
+                           const statusRes = await fetchProxmox(statusUrl, config);
+                           if (statusRes.ok) {
+                               const statusJson = await statusRes.json() as any;
+                               // Flexible parsing as we just want cpu/mem
+                               const d = statusJson.data;
+                               if (d) {
+                                   if (d.cpu !== undefined) {
+                                       basicVM.cpuUsage = d.cpu;
+                                   }
+                                   if (d.mem !== undefined) {
+                                       basicVM.mem = d.mem;
+                                   }
+                                   if (d.maxmem !== undefined) {
+                                       basicVM.maxmem = d.maxmem;
+                                   }
+                                   if (d.uptime !== undefined) {
+                                       basicVM.uptime = d.uptime;
+                                   }
+                               }
+                           }
+                       } catch (e) {
+                           logger.warn({ err: e, vmid: vm.vmid }, "Failed to fetch detailed VM status");
+                       }
+                    }
+                    return basicVM;
                 }));
+                return results;
             } else {
                 logger.warn({ node, type, err: parsed.error }, "Invalid VM list format");
             }

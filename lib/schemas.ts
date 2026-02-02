@@ -32,6 +32,7 @@ export const VMStatusSchema = z.object({
   name: z.string(),
   status: z.enum(['running', 'stopped', 'paused']),
   cpus: z.number().optional().default(0),
+  cpuUsage: z.number().optional(),
   maxmem: z.number().optional().default(0),
   mem: z.number().optional().default(0),
   uptime: z.number().optional().default(0),

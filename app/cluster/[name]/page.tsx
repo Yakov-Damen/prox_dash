@@ -8,7 +8,7 @@ import { NodeStatus } from '@/lib/proxmox';
 import { ResourceBar } from '@/components/ResourceBar';
 import { StatusBadge } from '@/components/StatusBadge';
 import { GradientCard } from '@/components/GradientCard';
-import { formatBytes } from '@/lib/status-utils';
+import { formatBytes, formatBytesPair } from '@/lib/status-utils';
 import { useCluster } from '@/lib/hooks';
 
 
@@ -44,7 +44,7 @@ function NodeCard({ node, clusterName }: { node: NodeStatus, clusterName: string
                 label="Memory" 
                 percentage={(node.mem / node.maxmem) * 100}
                 displayMain={`${((node.mem / node.maxmem) * 100).toFixed(1)}%`}
-                displaySub={`${formatBytes(node.mem)} / ${formatBytes(node.maxmem)}`}
+                displaySub={formatBytesPair(node.mem, node.maxmem)}
                 colorClass="bg-emerald-500" 
               />
               <ResourceBar 

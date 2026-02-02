@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { VMStatus } from '@/lib/proxmox';
 import { StatusBadge } from '@/components/StatusBadge';
 import { useNode, useNodeVMs } from '@/lib/hooks';
-import { formatBytes } from '@/lib/status-utils';
+import { formatBytes, formatBytesPair } from '@/lib/status-utils';
 
 function VMTable({ vms }: { vms: VMStatus[] }) {
 
@@ -38,15 +38,24 @@ function VMTable({ vms }: { vms: VMStatus[] }) {
                    {vm.type === 'qemu' ? <Monitor size={14} /> : <Box size={14} />}
                    <span className="uppercase">{vm.type}</span>
                 </td>
-                <td className="p-4 text-slate-400 text-sm">{vm.cpus} vCPU</td>
+                <td className="p-4 text-slate-400 text-sm">
+                   {vm.cpuUsage !== undefined ? (
+                       <div className="flex flex-col">
+                           <span className={cn("font-mono", vm.cpuUsage > 0.8 ? "text-red-400" : "text-slate-300")}>
+                               {(vm.cpuUsage * vm.cpus).toFixed(2)} / {vm.cpus} vCPU
+                           </span>
+                       </div>
+                   ) : (
+                       <span className="text-slate-600">{vm.cpus} vCPU</span>
+                   )}
+                </td>
                 <td className="p-4 text-slate-400 text-sm">
                    {vm.status === 'running' ? (
                      <div className="flex flex-col">
-                       <span className="text-slate-300">{formatBytes(vm.mem)}</span>
-                       <span className="text-[10px] text-slate-600">of {formatBytes(vm.maxmem)}</span>
+                       <span className="text-slate-300">{formatBytesPair(vm.mem, vm.maxmem)}</span>
                      </div>
                    ) : (
-                     <span className="text-slate-600">{formatBytes(vm.maxmem)}</span>
+                       <span className="text-slate-600">{formatBytes(vm.maxmem)}</span>
                    )}
                 </td>
                 <td className="p-4 text-slate-500 text-sm font-mono">

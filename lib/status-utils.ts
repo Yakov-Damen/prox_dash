@@ -23,10 +23,24 @@ export function getStatusColor(status: string, variant: 'badge' | 'text' | 'bg' 
   return "";
 }
 
+
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+export function formatBytesPair(used: number, total: number): string {
+  if (total === 0) return '0 / 0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  // Determine unit based on total
+  const i = Math.floor(Math.log(total) / Math.log(k));
+  
+  const usedVal = parseFloat((used / Math.pow(k, i)).toFixed(1));
+  const totalVal = parseFloat((total / Math.pow(k, i)).toFixed(1));
+  
+  return `${usedVal} / ${totalVal} ${sizes[i] || 'B'}`;
 }

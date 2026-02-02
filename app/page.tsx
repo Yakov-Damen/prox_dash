@@ -6,7 +6,7 @@ import { Activity, Cpu, RefreshCw, ArrowRight, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClusterStatus } from '@/lib/proxmox';
 import { GradientCard } from '@/components/GradientCard';
-import { formatBytes } from '@/lib/status-utils';
+import { formatBytes, formatBytesPair } from '@/lib/status-utils';
 import { useClusterList } from '@/lib/hooks';
 
 function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
@@ -58,7 +58,7 @@ function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
               <div className="text-lg font-bold text-slate-200">
                 {cpuUsageAvg.toFixed(1)}%
               </div>
-              <div className="text-xs text-slate-500">{totalCores} Cores</div>
+              <div className="text-xs text-slate-500">{(cpuUsageAvg / 100 * totalCores).toFixed(2)} / {totalCores} Cores</div>
            </div>
            
            <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">
@@ -68,7 +68,7 @@ function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
               <div className="text-lg font-bold text-slate-200">
                 {memUsagePercent.toFixed(1)}%
               </div>
-              <div className="text-xs text-slate-500">{formatBytes(usedMem)} / {formatBytes(totalMem)}</div>
+              <div className="text-xs text-slate-500">{formatBytesPair(usedMem, totalMem)}</div>
            </div>
         </div>
       </GradientCard>
