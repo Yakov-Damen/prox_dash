@@ -33,6 +33,21 @@ export function useClusterList() {
   };
 }
 
+export function useClusterNames() {
+  const { data, error, isLoading, mutate } = useSWR<string[]>(
+    '/api/proxmox/list',
+    fetcher,
+    swrOptions
+  );
+
+  return {
+    data: data || [],
+    loading: isLoading,
+    error,
+    refresh: mutate
+  };
+}
+
 export function useCluster(name: string) {
   const { data, error, isLoading, mutate } = useSWR<ClusterStatus>(
     name ? `/api/proxmox/cluster/${encodeURIComponent(name)}` : null,
