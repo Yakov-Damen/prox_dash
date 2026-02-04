@@ -105,6 +105,11 @@ function getHardwareInventory(): Record<string, Record<string, HardwareInfo>> {
   }
 }
 
+export function getClusterNames(): string[] {
+  const configs = getClusterConfigs();
+  return configs.map(c => c.name);
+}
+
 // Helper to handle fetch with auth and TLS agent
 async function fetchProxmox(url: string, config: ProxmoxClusterConfig): Promise<Response> {
   const isHttps = url.toLowerCase().startsWith('https');
@@ -139,6 +144,7 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
     const versionUrl = `${config.url}/api2/json/version`;
     
     logger.info({ cluster: config.name, url: config.url }, "Starting cluster fetch");
+
     const inventory = getHardwareInventory();
 
     const res = await fetchProxmox(apiUrl, config);
