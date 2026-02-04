@@ -1,0 +1,53 @@
+[
+  {
+    "name": "Proxmox Production",
+    "type": "proxmox",
+    "url": "https://proxmox.example.com:8006",
+    "tokenId": "user@pam!token",
+    "tokenSecret": "uuid-secret",
+    "allowInsecure": false
+  },
+  {
+    "name": "Proxmox Lab",
+    "type": "proxmox",
+    "enabled": true,
+    "url": "https://proxmox-lab.example.com:8006",
+    "tokenId": "admin@pam!monitoring",
+    "tokenSecret": "12345678-1234-1234-1234-123456789abc",
+    "allowInsecure": true
+  },
+  {
+    "name": "K8s Production",
+    "type": "kubernetes",
+    "kubeConfigPath": "~/.kube/config",
+    "kubeConfigContext": "production"
+  },
+  {
+    "name": "K8s Staging",
+    "type": "kubernetes",
+    "enabled": true,
+    "kubeConfigPath": "/etc/kubernetes/admin.conf",
+    "kubeConfigContext": "staging-cluster"
+  },
+  {
+    "name": "OpenStack Cloud",
+    "type": "openstack",
+    "authUrl": "https://keystone.example.com:5000/v3",
+    "projectName": "admin",
+    "username": "admin",
+    "password": "secret",
+    "userDomainName": "Default",
+    "projectDomainName": "Default",
+    "regionName": "RegionOne"
+  },
+  {
+    "name": "OpenStack Dev",
+    "type": "openstack",
+    "enabled": false,
+    "authUrl": "https://keystone-dev.example.com:5000/v3",
+    "projectName": "development",
+    "username": "dev-user",
+    "password": "dev-secret",
+    "allowInsecure": true
+  }
+]

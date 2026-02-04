@@ -1,9 +1,26 @@
-import fs from 'fs';
-import path from 'path';
-import https from 'https';
-import { logger } from './logger';
-import fetch, { Response } from 'node-fetch';
+/**
+ * @deprecated This module is maintained for backward compatibility.
+ * Use `lib/providers/proxmox` for new code.
+ */
 
+import { logger } from './logger';
+import {
+  ProxmoxClusterConfig as NewProxmoxClusterConfig,
+  ProxmoxProvider,
+  getProxmoxConfigs,
+} from './providers/proxmox';
+import {
+  LegacyProxmoxNodeStatus,
+  LegacyProxmoxVMStatus,
+} from './providers/types';
+
+// ============================================================================
+// Legacy Type Re-exports (for backward compatibility)
+// ============================================================================
+
+/**
+ * @deprecated Use `ProxmoxClusterConfig` from `lib/providers/proxmox/config`
+ */
 export interface ProxmoxClusterConfig {
   name: string;
   url: string;
@@ -12,6 +29,9 @@ export interface ProxmoxClusterConfig {
   allowInsecure?: boolean;
 }
 
+/**
+ * @deprecated Use `NodeStatus` from `lib/providers/types`
+ */
 export interface NodeStatus {
   id: string;
   node: string;
@@ -31,6 +51,9 @@ export interface NodeStatus {
   productName?: string;
 }
 
+/**
+ * @deprecated Use `ClusterStatus` from `lib/providers/types`
+ */
 export interface ClusterStatus {
   name: string;
   nodes: NodeStatus[];
@@ -38,373 +61,148 @@ export interface ClusterStatus {
   version?: string;
 }
 
+/**
+ * @deprecated Use `Workload` from `lib/providers/types`
+ */
 export interface VMStatus {
   vmid: number;
   name: string;
   status: 'running' | 'stopped' | 'paused';
   cpus: number;
   cpuUsage?: number;
-  maxmem: number; // bytes
-  mem: number; // bytes used
+  maxmem: number;
+  mem: number;
   uptime: number;
   type: 'qemu' | 'lxc';
 }
 
-const CONFIG_PATH = path.join(process.cwd(), 'proxmox_config.json');
-const INVENTORY_PATH = path.join(process.cwd(), 'hardware_inventory.json');
+// ============================================================================
+// Legacy Function Implementations (delegating to new provider)
+// ============================================================================
 
-// In-memory cache
-let cachedConfigs: ProxmoxClusterConfig[] | null = null;
-
-interface HardwareInfo {
-  manufacturer?: string;
-  productName?: string;
-}
-let cachedInventory: Record<string, Record<string, HardwareInfo>> | null = null;
-
+/**
+ * @deprecated Use `getProxmoxConfigs()` from `lib/providers/proxmox`
+ */
 export function getClusterConfigs(): ProxmoxClusterConfig[] {
-  if (cachedConfigs) return cachedConfigs;
-  
-  try {
-    if (!fs.existsSync(CONFIG_PATH)) {
-      logger.warn({ path: CONFIG_PATH }, "Config file not found");
-      return [];
-    }
-    const fileContent = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    const configs = JSON.parse(fileContent);
-    logger.debug({ count: configs.length }, "Loaded cluster configs");
-    cachedConfigs = configs;
-    return configs;
-  } catch (error) {
-    logger.error({ err: error }, "Error reading config");
-    return [];
-  }
+  return getProxmoxConfigs();
 }
 
-function getHardwareInventory(): Record<string, Record<string, HardwareInfo>> {
-  if (cachedInventory) return cachedInventory;
-
-  try {
-    if (!fs.existsSync(INVENTORY_PATH)) return {};
-    const inventory = JSON.parse(fs.readFileSync(INVENTORY_PATH, 'utf-8'));
-    cachedInventory = inventory;
-    return inventory;
-  } catch (e: unknown) {
-    logger.error({ err: e }, "Failed to read hardware inventory");
-    return {};
-  }
-}
-
-// Helper to handle fetch with auth and TLS agent
-async function fetchProxmox(url: string, config: ProxmoxClusterConfig): Promise<Response> {
-  const isHttps = url.toLowerCase().startsWith('https');
-  const agent = isHttps ? new https.Agent({
-    rejectUnauthorized: !config.allowInsecure
-  }) : undefined;
-
-  const headers: HeadersInit = {
-    'Authorization': `PVEAPIToken=${config.tokenId}=${config.tokenSecret}`,
+/**
+ * Convert unified NodeStatus back to legacy format
+ */
+function convertUnifiedToLegacyNode(
+  unified: import('./providers/types').NodeStatus
+): NodeStatus {
+  return {
+    id: unified.id,
+    node: unified.name,
+    status: unified.status as 'online' | 'offline' | 'unknown',
+    cpu: unified.cpu.total > 0 ? unified.cpu.used / unified.cpu.total : 0,
+    maxcpu: unified.cpu.total,
+    mem: unified.memory.used,
+    maxmem: unified.memory.total,
+    uptime: unified.uptime || 0,
+    disk: unified.storage?.used,
+    maxdisk: unified.storage?.total,
+    cpuModel: unified.providerData?.cpuModel,
+    cpuSockets: unified.providerData?.cpuSockets,
+    cpuCores: unified.providerData?.cpuCores,
+    kernelVersion: unified.providerData?.kernelVersion,
+    manufacturer: unified.providerData?.manufacturer,
+    productName: unified.providerData?.productName,
   };
-
-  const fetchOptions: any = {
-    headers,
-    agent, 
-  };
-
-  try {
-    const res = await fetch(url, fetchOptions);
-    return res;
-  } catch (e: unknown) {
-    throw e;
-  }
 }
 
-import { ProxmoxNodeListResponseSchema, ProxmoxVersionResponseSchema, ProxmoxNodeStatusResponseSchema, ProxmoxVMListResponseSchema } from './schemas';
+/**
+ * Convert unified Workload back to legacy VMStatus format
+ */
+function convertUnifiedToLegacyVM(
+  unified: import('./providers/types').Workload
+): VMStatus {
+  return {
+    vmid: unified.providerData?.vmid || parseInt(unified.id, 10),
+    name: unified.name,
+    status: unified.status as 'running' | 'stopped' | 'paused',
+    cpus: unified.cpu.count,
+    cpuUsage: unified.cpu.usage,
+    maxmem: unified.memory.total,
+    mem: unified.memory.used,
+    uptime: unified.uptime || 0,
+    type: unified.type as 'qemu' | 'lxc',
+  };
+}
 
-// ... (previous code)
+/**
+ * @deprecated Use `ProxmoxProvider.getCluster()` from `lib/providers/proxmox`
+ */
+export async function fetchClusterStatus(
+  config: ProxmoxClusterConfig
+): Promise<ClusterStatus> {
+  const provider = new ProxmoxProvider({
+    ...config,
+    type: 'proxmox',
+    enabled: true,
+  });
 
-export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<ClusterStatus> {
-  try {
-    const apiUrl = `${config.url}/api2/json/nodes`;
-    const versionUrl = `${config.url}/api2/json/version`;
-    
-    logger.info({ cluster: config.name, url: config.url }, "Starting cluster fetch");
-    const inventory = getHardwareInventory();
+  const unified = await provider.getCluster(config.name);
 
-    const res = await fetchProxmox(apiUrl, config);
-    if (!res.ok) {
-      throw new Error(`API Error: ${res.status} ${res.statusText}`);
-    }
-    const json = await res.json();
-    
-    // Validate with Zod
-    const parsed = ProxmoxNodeListResponseSchema.safeParse(json);
-    if (!parsed.success) {
-        logger.error({ err: parsed.error, cluster: config.name }, "Invalid node list format from Proxmox");
-        throw new Error("Invalid response format from Proxmox API");
-    }
-    
-    const data = parsed.data;
-
-    // Fetch Version
-    let version = '';
-    try {
-        const verRes = await fetchProxmox(versionUrl, config);
-        if (verRes.ok) {
-            const verJson = await verRes.json();
-            const verParsed = ProxmoxVersionResponseSchema.safeParse(verJson);
-            if (verParsed.success) {
-                version = verParsed.data.data.version;
-            }
-        }
-    } catch (e: unknown) {
-        logger.warn({ err: e, cluster: config.name }, "Failed to fetch cluster version");
-    }
-
-    const nodes: NodeStatus[] = await Promise.all(data.data.map(async (node) => {
-      const basicNode: NodeStatus = {
-        id: node.id || node.node,
-        node: node.node,
-        status: node.status,
-        cpu: node.cpu || 0,
-        maxcpu: node.maxcpu || 0,
-        mem: node.mem || 0,
-        maxmem: node.maxmem || 0,
-        uptime: node.uptime || 0,
-        disk: node.disk || 0,
-        maxdisk: node.maxdisk || 0,
-      };
-
-      // Check inventory
-      const inv = inventory[config.name]?.[node.node] || inventory[node.node];
-      if (!inv) {
-         logger.debug({ cluster: config.name, node: node.node }, "No hardware inventory found for node");
-      }
-      
-      if (inv) {
-        if (inv.manufacturer) basicNode.manufacturer = inv.manufacturer;
-        if (inv.productName) basicNode.productName = inv.productName;
-      }
-
-      // If online, try to fetch detailed status
-      if (node.status === 'online') {
-        try {
-          const detailUrl = `${config.url}/api2/json/nodes/${node.node}/status`;
-          const detailRes = await fetchProxmox(detailUrl, config);
-
-           if (detailRes.ok) {
-             const detailJson = await detailRes.json();
-             // Validate detail
-             const dParsed = ProxmoxNodeStatusResponseSchema.safeParse(detailJson);
-             
-             if (dParsed.success) {
-                 const d = dParsed.data.data;
-                 
-                 // Update with detailed metrics
-                 basicNode.cpu = d.cpu || 0;
-                 // Use cores for maxcpu to be consistent with "Cores" label, 
-                 // but fallback to existing if missing (though schema says cpuinfo is optional)
-                 if (d.cpuinfo?.cores) {
-                     basicNode.maxcpu = d.cpuinfo.cores;
-                 }
-                 
-                 if (d.memory) {
-                    basicNode.mem = d.memory.used;
-                    basicNode.maxmem = d.memory.total;
-                 }
-                 
-                 if (d.rootfs) {
-                    basicNode.disk = d.rootfs.used;
-                    basicNode.maxdisk = d.rootfs.total;
-                 }
-
-                 if (d.uptime) {
-                    basicNode.uptime = d.uptime;
-                 }
-
-                 if (d.cpuinfo) {
-                    basicNode.cpuModel = d.cpuinfo.model;
-                    basicNode.cpuSockets = d.cpuinfo.sockets;
-                    basicNode.cpuCores = d.cpuinfo.cores;
-                 }
-                 if (d.kversion) {
-                    basicNode.kernelVersion = d.kversion.split(' #')[0];
-                 }
-             }
-           }
-        } catch (e: unknown) {
-          logger.warn({ err: e, node: node.node }, "Failed to fetch details for node");
-        }
-      }
-      return basicNode;
-    }));
-
-    // Sort nodes alphabetically
-    nodes.sort((a, b) => a.node.localeCompare(b.node, undefined, { numeric: true }));
-
-    logger.info({ cluster: config.name, nodeCount: nodes.length }, "Successfully fetched cluster status");
-
-    return {
-      name: config.name,
-      nodes,
-      version
-    };
-
-  } catch (error: unknown) {
-    const err = error instanceof Error ? error : new Error(String(error));
-    logger.error({ err, cluster: config.name }, "Failed to fetch cluster");
+  if (!unified) {
     return {
       name: config.name,
       nodes: [],
-      error: err.message
+      error: 'Failed to fetch cluster status',
     };
   }
+
+  return {
+    name: unified.name,
+    nodes: unified.nodes.map(convertUnifiedToLegacyNode),
+    error: unified.error,
+    version: unified.version,
+  };
 }
 
+/**
+ * @deprecated Use `ProxmoxProvider.getNode()` from `lib/providers/proxmox`
+ */
+export async function getNodeStatus(
+  config: ProxmoxClusterConfig,
+  nodeName: string
+): Promise<NodeStatus | null> {
+  const provider = new ProxmoxProvider({
+    ...config,
+    type: 'proxmox',
+    enabled: true,
+  });
 
+  const unified = await provider.getNode(config.name, nodeName);
+  if (!unified) return null;
 
-export async function getNodeStatus(config: ProxmoxClusterConfig, nodeName: string): Promise<NodeStatus | null> {
-  try {
-    logger.info({ cluster: config.name, node: nodeName }, "Fetching single node status");
-    const inventory = getHardwareInventory();
-    
-    const url = `${config.url}/api2/json/nodes/${nodeName}/status`;
-    const res = await fetchProxmox(url, config);
-
-    if (!res.ok) {
-        logger.warn({ cluster: config.name, node: nodeName, status: res.status }, "Failed to fetch node status API");
-        return null;
-    }
-
-    const json = await res.json();
-    const parsed = ProxmoxNodeStatusResponseSchema.safeParse(json);
-    
-    if (!parsed.success) {
-         logger.warn({ cluster: config.name, node: nodeName, err: parsed.error }, "Invalid node status format");
-         return null;
-    }
-
-    const d = parsed.data.data;
-
-    const node: NodeStatus = {
-        id: `node/${config.name}/${nodeName}`,
-        node: nodeName,
-        status: 'online', 
-        cpu: d.cpu || 0,
-        maxcpu: d.cpuinfo?.cores || 0,
-        mem: d.memory?.used || 0,
-        maxmem: d.memory?.total || 0,
-        uptime: d.uptime || 0,
-        disk: d.rootfs?.used || 0,
-        maxdisk: d.rootfs?.total || 0,
-        
-        cpuModel: d.cpuinfo?.model,
-        cpuSockets: d.cpuinfo?.sockets,
-        cpuCores: d.cpuinfo?.cores,
-        kernelVersion: d.kversion ? d.kversion.split(' #')[0] : undefined
-    };
-
-    // Mix in inventory
-    const inv = inventory[config.name]?.[nodeName] || inventory[nodeName];
-    if (inv) {
-        if (inv.manufacturer) node.manufacturer = inv.manufacturer;
-        if (inv.productName) node.productName = inv.productName;
-    }
-
-    return node;
-  } catch (e: unknown) {
-    logger.error({ err: e, cluster: config.name, node: nodeName }, "Error fetching single node status");
-    return null;
-  }
+  return convertUnifiedToLegacyNode(unified);
 }
 
-export async function getNodeVMs(config: ProxmoxClusterConfig, node: string): Promise<VMStatus[]> {
-  try {
-    logger.info({ node, cluster: config.name }, "Fetching VMs for node");
-    
-    // Run in parallel
-    const [qemuRes, lxcRes] = await Promise.all([
-        fetchProxmox(`${config.url}/api2/json/nodes/${node}/qemu`, config),
-        fetchProxmox(`${config.url}/api2/json/nodes/${node}/lxc`, config)
-    ]);
+/**
+ * @deprecated Use `ProxmoxProvider.getWorkloads()` from `lib/providers/proxmox`
+ */
+export async function getNodeVMs(
+  config: ProxmoxClusterConfig,
+  node: string
+): Promise<VMStatus[]> {
+  const provider = new ProxmoxProvider({
+    ...config,
+    type: 'proxmox',
+    enabled: true,
+  });
 
-    let vms: VMStatus[] = [];
-
-    const processVMs = async (res: Response, type: 'qemu' | 'lxc') => {
-        if (res.ok) {
-            const json = await res.json();
-            const parsed = ProxmoxVMListResponseSchema.safeParse(json);
-            if (parsed.success) {
-                const results = await Promise.all(parsed.data.data.map(async (vm) => {
-                    const basicVM: VMStatus = {
-                        vmid: vm.vmid,
-                        name: vm.name,
-                        status: (['running', 'stopped', 'paused'].includes(vm.status) ? vm.status : 'stopped') as 'running' | 'stopped' | 'paused',
-                        cpus: vm.cpus || 0,
-                        maxmem: vm.maxmem || 0,
-                        mem: vm.mem || 0,
-                        uptime: vm.uptime || 0,
-                        type
-                    };
-
-                    if (basicVM.status === 'running') {
-                       try {
-                           const statusUrl = `${config.url}/api2/json/nodes/${node}/${type}/${vm.vmid}/status/current`;
-                           const statusRes = await fetchProxmox(statusUrl, config);
-                           if (statusRes.ok) {
-                               const statusJson = await statusRes.json() as any;
-                               // Flexible parsing as we just want cpu/mem
-                               const d = statusJson.data;
-                               if (d) {
-                                   if (d.cpu !== undefined) {
-                                       basicVM.cpuUsage = d.cpu;
-                                   }
-                                   if (d.mem !== undefined) {
-                                       basicVM.mem = d.mem;
-                                   }
-                                   if (d.maxmem !== undefined) {
-                                       basicVM.maxmem = d.maxmem;
-                                   }
-                                   if (d.uptime !== undefined) {
-                                       basicVM.uptime = d.uptime;
-                                   }
-                               }
-                           }
-                       } catch (e) {
-                           logger.warn({ err: e, vmid: vm.vmid }, "Failed to fetch detailed VM status");
-                       }
-                    }
-                    return basicVM;
-                }));
-                return results;
-            } else {
-                logger.warn({ node, type, err: parsed.error }, "Invalid VM list format");
-            }
-        }
-        return [];
-    };
-
-    const qemus = await processVMs(qemuRes, 'qemu');
-    const lxcs = await processVMs(lxcRes, 'lxc');
-    
-    vms = [...qemus, ...lxcs];
-
-    // Sort by VMID
-    vms.sort((a, b) => a.vmid - b.vmid);
-    
-    logger.info({ node, vmCount: vms.length }, "Fetched VMs for node");
-    
-    return vms;
-
-  } catch (e: unknown) {
-    logger.error({ err: e, node }, "Failed to fetch VMs for node");
-    return [];
-  }
+  const workloads = await provider.getWorkloads(config.name, node);
+  return workloads.map(convertUnifiedToLegacyVM);
 }
 
+/**
+ * @deprecated Use provider factory from `lib/providers`
+ */
 export async function getAllClustersStatus(): Promise<ClusterStatus[]> {
   const configs = getClusterConfigs();
-  const promises = configs.map(config => fetchClusterStatus(config));
+  const promises = configs.map((config) => fetchClusterStatus(config));
   return Promise.all(promises);
 }
-
