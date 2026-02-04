@@ -2,85 +2,16 @@
 
 
 import Link from 'next/link';
-import { Activity, Cpu, RefreshCw, ArrowRight, LayoutGrid } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ClusterStatus } from '@/lib/proxmox';
-import { GradientCard } from '@/components/GradientCard';
-import { formatBytes, formatBytesPair } from '@/lib/status-utils';
-import { useClusterList } from '@/lib/hooks';
-
-function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
-  const totalNodes = cluster.nodes.length;
-  const onlineNodes = cluster.nodes.filter(n => n.status === 'online').length;
-  
-  // Aggregated Stats
-  const totalCores = cluster.nodes.reduce((acc, n) => acc + (n.maxcpu || 0), 0);
-  const totalMem = cluster.nodes.reduce((acc, n) => acc + (n.maxmem || 0), 0);
-  const usedMem = cluster.nodes.reduce((acc, n) => acc + (n.mem || 0), 0);
-  
-  const cpuUsageAvg = cluster.nodes.length > 0 
-    ? cluster.nodes.reduce((acc, n) => acc + (n.cpu * 100), 0) / cluster.nodes.length 
-    : 0;
-    
-  const memUsagePercent = totalMem > 0 ? (usedMem / totalMem) * 100 : 0;
-
-  return (
-    <Link href={`/cluster/${encodeURIComponent(cluster.name)}`} className="block group h-full">
-      <GradientCard className="h-full flex flex-col">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:bg-indigo-500/20 group-hover:text-indigo-300 transition-colors">
-              <LayoutGrid size={24} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-white group-hover:text-indigo-200 transition-colors">{cluster.name}</h3>
-                {cluster.version && (
-                  <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs border border-slate-700 font-mono">
-                    v{cluster.version}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-slate-500 flex items-center gap-1.5">
-                <span className={cn("w-2 h-2 rounded-full", onlineNodes === totalNodes ? "bg-emerald-500" : "bg-amber-500")}></span>
-                {onlineNodes} / {totalNodes} Nodes Online
-              </p>
-            </div>
-          </div>
-          <ArrowRight className="text-slate-600 group-hover:text-indigo-400 transform group-hover:translate-x-1 transition-all" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mt-auto">
-           <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium mb-1">
-                <Cpu size={14} /> CPU Avg
-              </div>
-              <div className="text-lg font-bold text-slate-200">
-                {cpuUsageAvg.toFixed(1)}%
-              </div>
-              <div className="text-xs text-slate-500">{(cpuUsageAvg / 100 * totalCores).toFixed(2)} / {totalCores} Cores</div>
-           </div>
-           
-           <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium mb-1">
-                <Activity size={14} /> Mem Usage
-              </div>
-              <div className="text-lg font-bold text-slate-200">
-                {memUsagePercent.toFixed(1)}%
-              </div>
-              <div className="text-xs text-slate-500">{formatBytesPair(usedMem, totalMem)}</div>
-           </div>
-        </div>
-      </GradientCard>
-    </Link>
-  );
-}
+import { useClusterNames } from '@/lib/hooks';
+import { ClusterStatusWrapper } from '@/components/ClusterStatusWrapper';
 
 export default function DashboardPage() {
-  const { data, loading, refresh } = useClusterList();
+  const { data: clusterNames, loading, refresh } = useClusterNames();
 
   // Handle initial scanning state or empty data
-  const isLoadingInitial = loading && (!data || data.length === 0);
+  const isLoadingInitial = loading && (!clusterNames || clusterNames.length === 0);
 
   return (
     <main className="min-h-screen bg-slate-950 p-6 md:p-12">
@@ -94,7 +25,14 @@ export default function DashboardPage() {
           </div>
           
           <button 
-            onClick={() => refresh()}
+            onClick={() => {
+                refresh();
+                // We should also trigger re-fetch of children if we could, 
+                // but SWR will eventually revalidate. 
+                // A Global mutate or context based approach would be better for a "refresh all" button,
+                // but for now this refreshes the list at least.
+                // Ideally, we'd pass a refresh signal down or use a global SWR cache invalidation.
+            }}
             disabled={loading}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 border border-slate-800 text-slate-300 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
           >
@@ -106,17 +44,17 @@ export default function DashboardPage() {
         {isLoadingInitial ? (
            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
              <RefreshCw size={40} className="animate-spin mb-4 opacity-50" />
-             <p>Scanning clusters...</p>
+             <p>Scanning configuration...</p>
            </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-             {data.length === 0 && !loading && (
+             {clusterNames.length === 0 && !loading && (
                  <div className="col-span-full text-center py-20 border border-dashed border-slate-800 rounded-xl">
-                    <p className="text-slate-400">No clusters found.</p>
+                    <p className="text-slate-400">No clusters found in configuration.</p>
                  </div>
              )}
-             {data.map((cluster, idx) => (
-               <ClusterSummaryCard key={idx} cluster={cluster} />
+             {clusterNames.map((name) => (
+               <ClusterStatusWrapper key={name} clusterName={name} />
              ))}
           </div>
         )}
@@ -124,3 +62,4 @@ export default function DashboardPage() {
     </main>
   );
 }
+

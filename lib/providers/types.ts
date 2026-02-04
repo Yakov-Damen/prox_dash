@@ -74,6 +74,41 @@ export const ResourceMetricSchema = z.object({
 });
 
 // ============================================================================
+// Storage Types
+// ============================================================================
+
+export const StorageTypes = [
+  'ceph',    // Proxmox Ceph
+  'zfs',     // ZFS pools
+  'nfs',     // NFS shares
+  'local',   // Local storage
+  'pv',      // Kubernetes PersistentVolume
+  'cinder',  // OpenStack Cinder
+  'other',   // Other storage types
+] as const;
+export type StorageType = (typeof StorageTypes)[number];
+
+export interface ClusterStorage {
+  type: StorageType;
+  health: string;
+  usage?: {
+    total: number;
+    used: number;
+    available: number;
+  };
+}
+
+export const ClusterStorageSchema = z.object({
+  type: z.enum(StorageTypes),
+  health: z.string(),
+  usage: z.object({
+    total: z.number(),
+    used: z.number(),
+    available: z.number(),
+  }).optional(),
+});
+
+// ============================================================================
 // Unified Cluster Status
 // ============================================================================
 
@@ -83,6 +118,7 @@ export interface ClusterStatus {
   nodes: NodeStatus[];
   version?: string;
   error?: string;
+  storage?: ClusterStorage;
   metadata?: Record<string, string>;
 }
 
@@ -92,6 +128,7 @@ export const ClusterStatusSchema = z.object({
   nodes: z.array(z.lazy(() => NodeStatusSchema)),
   version: z.string().optional(),
   error: z.string().optional(),
+  storage: ClusterStorageSchema.optional(),
   metadata: z.record(z.string()).optional(),
 });
 

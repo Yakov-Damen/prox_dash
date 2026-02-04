@@ -115,3 +115,21 @@ export const ProxmoxVMStatusResponseSchema = z.object({
 });
 
 export type ProxmoxVMStatusResponse = z.infer<typeof ProxmoxVMStatusResponseSchema>;
+
+/**
+ * Schema for Proxmox /api2/json/cluster/ceph/status response
+ */
+export const ProxmoxCephStatusResponseSchema = z.object({
+  data: z.object({
+    health: z.object({
+      status: z.string(), // e.g., HEALTH_OK, HEALTH_WARN, HEALTH_ERR
+    }),
+    pgmap: z.object({
+      bytes_total: z.number(),
+      bytes_used: z.number(),
+      bytes_avail: z.number(),
+    }).optional(),
+  }),
+});
+
+export type ProxmoxCephStatusResponse = z.infer<typeof ProxmoxCephStatusResponseSchema>;

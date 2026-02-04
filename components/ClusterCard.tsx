@@ -7,7 +7,7 @@ import { ProviderBadge } from '@/components/ProviderBadge';
 import { ResourceBar } from '@/components/ResourceBar';
 import { formatBytes, formatPercentage } from '@/lib/status-utils';
 import type { ClusterStatus, ResourceMetric } from '@/lib/providers/types';
-import { Server, AlertCircle } from 'lucide-react';
+import { Server, AlertCircle, Database } from 'lucide-react';
 
 interface ClusterCardProps {
   cluster: ClusterStatus;
@@ -159,6 +159,57 @@ export function ClusterCard({ cluster, className }: ClusterCardProps) {
                       : 'bg-blue-500'
                 }
               />
+            )}
+          </div>
+        )}
+
+        {/* Cluster Storage (Ceph, etc.) */}
+        {cluster.storage && (
+          <div className="mt-4 pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
+                <Database size={14} />
+                <span className="capitalize">{cluster.storage.type} Storage</span>
+              </div>
+              <span
+                className={cn(
+                  'text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase',
+                  cluster.storage.health === 'HEALTH_OK'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : cluster.storage.health === 'HEALTH_WARN'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      : 'bg-red-500/10 text-red-400 border-red-500/20'
+                )}
+              >
+                {cluster.storage.health.replace('HEALTH_', '')}
+              </span>
+            </div>
+            {cluster.storage.usage && (
+              <div className="space-y-1">
+                <div className="flex items-end justify-between">
+                  <div className="text-sm font-medium text-slate-200">
+                    {formatPercentage((cluster.storage.usage.used / cluster.storage.usage.total) * 100)}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {formatBytes(cluster.storage.usage.used)} / {formatBytes(cluster.storage.usage.total)}
+                  </div>
+                </div>
+                <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all duration-500',
+                      cluster.storage.health === 'HEALTH_OK'
+                        ? 'bg-emerald-500'
+                        : cluster.storage.health === 'HEALTH_WARN'
+                          ? 'bg-amber-500'
+                          : 'bg-red-500'
+                    )}
+                    style={{
+                      width: `${(cluster.storage.usage.used / cluster.storage.usage.total) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
             )}
           </div>
         )}

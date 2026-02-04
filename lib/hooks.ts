@@ -48,6 +48,28 @@ export function useInfrastructure(provider?: ProviderType) {
 }
 
 /**
+ * Fetch cluster names from all configured providers (for parallel loading)
+ */
+export function useInfrastructureNames(provider?: ProviderType) {
+  const url = provider
+    ? `/api/infrastructure/list?provider=${provider}`
+    : '/api/infrastructure/list';
+
+  const { data, error, isLoading, mutate } = useSWR<string[]>(
+    url,
+    fetcher,
+    swrOptions
+  );
+
+  return {
+    data: data || [],
+    loading: isLoading,
+    error,
+    refresh: mutate
+  };
+}
+
+/**
  * Fetch a single cluster by name
  */
 export function useInfraCluster(name: string) {
@@ -118,6 +140,25 @@ import { ClusterStatus as LegacyClusterStatus, NodeStatus as LegacyNodeStatus, V
 export function useClusterList() {
   const { data, error, isLoading, mutate } = useSWR<LegacyClusterStatus[]>(
     '/api/proxmox',
+    fetcher,
+    swrOptions
+  );
+
+  return {
+    data: data || [],
+    loading: isLoading,
+    error,
+    refresh: mutate
+  };
+}
+
+/**
+ * @deprecated Use useInfrastructureNames() instead
+ * Fetch cluster names for parallel loading
+ */
+export function useClusterNames() {
+  const { data, error, isLoading, mutate } = useSWR<string[]>(
+    '/api/proxmox/list',
     fetcher,
     swrOptions
   );

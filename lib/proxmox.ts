@@ -3,7 +3,6 @@
  * Use `lib/providers/proxmox` for new code.
  */
 
-import { logger } from './logger';
 import {
   ProxmoxClusterConfig as NewProxmoxClusterConfig,
   ProxmoxProvider,
@@ -59,6 +58,16 @@ export interface ClusterStatus {
   nodes: NodeStatus[];
   error?: string;
   version?: string;
+  ceph?: {
+    health: {
+      status: string;
+    };
+    usage?: {
+      total: number;
+      used: number;
+      avail: number;
+    };
+  };
 }
 
 /**
@@ -85,6 +94,15 @@ export interface VMStatus {
  */
 export function getClusterConfigs(): ProxmoxClusterConfig[] {
   return getProxmoxConfigs();
+}
+
+/**
+ * Get cluster names for parallel loading
+ * @deprecated Use unified provider factory
+ */
+export function getClusterNames(): string[] {
+  const configs = getClusterConfigs();
+  return configs.map(c => c.name);
 }
 
 /**
@@ -154,11 +172,29 @@ export async function fetchClusterStatus(
     };
   }
 
+  // Convert unified storage to legacy ceph format
+  let ceph: ClusterStatus['ceph'] = undefined;
+  if (unified.storage && unified.storage.type === 'ceph') {
+    ceph = {
+      health: {
+        status: unified.storage.health,
+      },
+    };
+    if (unified.storage.usage) {
+      ceph.usage = {
+        total: unified.storage.usage.total,
+        used: unified.storage.usage.used,
+        avail: unified.storage.usage.available,
+      };
+    }
+  }
+
   return {
     name: unified.name,
     nodes: unified.nodes.map(convertUnifiedToLegacyNode),
     error: unified.error,
     version: unified.version,
+    ceph,
   };
 }
 

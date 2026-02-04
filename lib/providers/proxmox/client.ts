@@ -8,6 +8,7 @@ import {
   ClusterStatus,
   NodeStatus,
   Workload,
+  ClusterStorage,
   LegacyProxmoxNodeStatus,
   LegacyProxmoxVMStatus,
   convertProxmoxNodeToUnified,
@@ -20,6 +21,7 @@ import {
   ProxmoxNodeStatusResponseSchema,
   ProxmoxVMListResponseSchema,
   ProxmoxVMStatusResponseSchema,
+  ProxmoxCephStatusResponseSchema,
 } from './schemas';
 
 // ============================================================================
@@ -324,6 +326,41 @@ export class ProxmoxProvider implements InfraProvider {
         convertProxmoxNodeToUnified(n, this.config.name)
       );
 
+      // Fetch Ceph Status
+      let storage: ClusterStorage | undefined = undefined;
+      try {
+        const cephUrl = `${this.config.url}/api2/json/cluster/ceph/status`;
+        const cephRes = await this.fetchProxmox(cephUrl);
+
+        if (cephRes.ok) {
+          const cephJson = await cephRes.json();
+          const cephParsed = ProxmoxCephStatusResponseSchema.safeParse(cephJson);
+
+          if (cephParsed.success) {
+            const d = cephParsed.data.data;
+            storage = {
+              type: 'ceph',
+              health: d.health.status,
+            };
+
+            if (d.pgmap) {
+              storage.usage = {
+                total: d.pgmap.bytes_total,
+                used: d.pgmap.bytes_used,
+                available: d.pgmap.bytes_avail,
+              };
+            }
+          }
+        }
+      } catch (e: unknown) {
+        // Ceph might not be installed, which returns 404 usually or just fails.
+        // We log as debug to not spam errors if Ceph isn't present.
+        logger.debug(
+          { err: e, cluster: this.config.name },
+          'Failed to fetch Ceph status (may not be installed)'
+        );
+      }
+
       logger.info(
         { cluster: this.config.name, nodeCount: nodes.length },
         'Successfully fetched cluster status'
@@ -334,6 +371,7 @@ export class ProxmoxProvider implements InfraProvider {
         provider: 'proxmox',
         nodes,
         version,
+        storage,
       };
     } catch (error: unknown) {
       const err = error instanceof Error ? error : new Error(String(error));
