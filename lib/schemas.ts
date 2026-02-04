@@ -20,11 +20,23 @@ export const NodeStatusSchema = z.object({
   productName: z.string().optional(),
 });
 
+export const CephStatusSchema = z.object({
+  health: z.object({
+    status: z.string(), // e.g., HEALTH_OK, HEALTH_WARN
+  }),
+  usage: z.object({
+    total: z.number(),
+    used: z.number(),
+    avail: z.number(),
+  }).optional(),
+});
+
 export const ClusterStatusSchema = z.object({
   name: z.string(),
   nodes: z.array(NodeStatusSchema),
   error: z.string().optional(),
   version: z.string().optional(),
+  ceph: CephStatusSchema.optional(),
 });
 
 export const VMStatusSchema = z.object({
@@ -96,4 +108,17 @@ export const ProxmoxVMListResponseSchema = z.object({
         mem: z.number().optional(),
         uptime: z.number().optional(),
     }))
+});
+
+export const ProxmoxCephStatusResponseSchema = z.object({
+  data: z.object({
+    health: z.object({
+      status: z.string(),
+    }),
+    pgmap: z.object({
+      bytes_total: z.number(),
+      bytes_used: z.number(),
+      bytes_avail: z.number(),
+    }).optional(),
+  })
 });

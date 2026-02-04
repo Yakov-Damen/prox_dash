@@ -36,6 +36,16 @@ export interface ClusterStatus {
   nodes: NodeStatus[];
   error?: string;
   version?: string;
+  ceph?: {
+    health: {
+      status: string;
+    };
+    usage?: {
+      total: number;
+      used: number;
+      avail: number;
+    };
+  };
 }
 
 export interface VMStatus {
@@ -119,7 +129,7 @@ async function fetchProxmox(url: string, config: ProxmoxClusterConfig): Promise<
   }
 }
 
-import { ProxmoxNodeListResponseSchema, ProxmoxVersionResponseSchema, ProxmoxNodeStatusResponseSchema, ProxmoxVMListResponseSchema } from './schemas';
+import { ProxmoxNodeListResponseSchema, ProxmoxVersionResponseSchema, ProxmoxNodeStatusResponseSchema, ProxmoxVMListResponseSchema, ProxmoxCephStatusResponseSchema } from './schemas';
 
 // ... (previous code)
 
@@ -159,6 +169,39 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
         }
     } catch (e: unknown) {
         logger.warn({ err: e, cluster: config.name }, "Failed to fetch cluster version");
+    }
+
+    // Fetch Ceph Status
+    let cephStatus: ClusterStatus['ceph'] = undefined;
+    try {
+        const cephUrl = `${config.url}/api2/json/cluster/ceph/status`;
+        const cephRes = await fetchProxmox(cephUrl, config);
+        
+        if (cephRes.ok) {
+            const cephJson = await cephRes.json();
+            const cephParsed = ProxmoxCephStatusResponseSchema.safeParse(cephJson);
+            
+            if (cephParsed.success) {
+                const d = cephParsed.data.data;
+                cephStatus = {
+                    health: {
+                        status: d.health.status
+                    }
+                };
+                
+                if (d.pgmap) {
+                    cephStatus.usage = {
+                        total: d.pgmap.bytes_total,
+                        used: d.pgmap.bytes_used,
+                        avail: d.pgmap.bytes_avail
+                    };
+                }
+            }
+        }
+    } catch (e: unknown) {
+        // Ceph might not be installed, which returns 404 usually or just fails.
+        // We log as debug/info to not spam errors if Ceph isn't present.
+        logger.debug({ err: e, cluster: config.name }, "Failed to fetch Ceph status (may not be installed)");
     }
 
     const nodes: NodeStatus[] = await Promise.all(data.data.map(async (node) => {
@@ -247,7 +290,8 @@ export async function fetchClusterStatus(config: ProxmoxClusterConfig): Promise<
     return {
       name: config.name,
       nodes,
-      version
+      version,
+      ceph: cephStatus
     };
 
   } catch (error: unknown) {
