@@ -127,6 +127,108 @@ export function useInfraWorkloads(clusterName: string, nodeName: string) {
   };
 }
 
+/**
+ * Fetch and aggregate status for global monitoring
+ */
+ export interface AggregatedStatus {
+  provider: ProviderType;
+  totalClusters: number;
+  totalNodes: number;
+  onlineNodes: number;
+  totalCores: number;
+  totalMemory: number;
+  usedMemory: number;
+  totalStorage: number;
+  usedStorage: number;
+  health: 'healthy' | 'warning' | 'critical';
+  cephStatus?: 'healthy' | 'warning' | 'critical' | 'unknown';
+}
+
+export function useAggregatedStatus() {
+  const { data: clusters, error, isLoading, mutate } = useSWR<ClusterStatus[]>(
+    '/api/infrastructure',
+    fetcher,
+    swrOptions
+  );
+
+  const aggregatedData = (clusters || []).reduce((acc, cluster) => {
+    const provider = cluster.provider;
+    if (!acc[provider]) {
+      acc[provider] = {
+        provider,
+        totalClusters: 0,
+        totalNodes: 0,
+        onlineNodes: 0,
+        totalCores: 0,
+        totalMemory: 0,
+        usedMemory: 0,
+        totalStorage: 0,
+        usedStorage: 0,
+        health: 'healthy',
+        cephStatus: undefined
+      };
+    }
+
+    const stats = acc[provider];
+    stats.totalClusters++;
+    
+    // Aggregate from nodes
+    cluster.nodes.forEach(node => {
+      stats.totalNodes++;
+      if (node.status === 'online' || node.status === 'ready') {
+        stats.onlineNodes++;
+      }
+      stats.totalCores += node.cpu.total || 0;
+      stats.totalMemory += node.memory.total || 0;
+      stats.usedMemory += node.memory.used || 0;
+    });
+
+    // Aggregate Storage (Cluster level)
+    if (cluster.storage) {
+        stats.totalStorage += cluster.storage.usage?.total || 0;
+        stats.usedStorage += cluster.storage.usage?.used || 0;
+
+        // Ceph Status Logic (if applicable)
+        if (cluster.storage.type === 'ceph') {
+            // Map 'HEALTH_OK' -> 'healthy', etc.
+            let incoming: 'healthy' | 'warning' | 'critical' | 'unknown' = 'unknown';
+            const health = cluster.storage.health;
+            
+            if (health === 'HEALTH_OK') incoming = 'healthy';
+            else if (health === 'HEALTH_WARN') incoming = 'warning';
+            else if (health === 'HEALTH_ERR') incoming = 'critical';
+            
+            const current = stats.cephStatus;
+            
+            if (!current) {
+                stats.cephStatus = incoming;
+            } else if (incoming === 'critical') {
+                stats.cephStatus = 'critical';
+            } else if (incoming === 'warning' && current !== 'critical') {
+                stats.cephStatus = 'warning';
+            } else if (incoming === 'healthy' && !['critical', 'warning'].includes(current)) {
+                stats.cephStatus = 'healthy';
+            }
+        }
+    }
+
+    // Simple health check: if any node is offline/not-ready, mark as warning/critical
+    // For now, let's say < 100% online is warning
+    if (stats.onlineNodes < stats.totalNodes) {
+      stats.health = 'critical'; 
+    }
+
+    return acc;
+  }, {} as Record<string, AggregatedStatus>);
+
+  return {
+    data: Object.values(aggregatedData),
+    loading: isLoading,
+    error,
+    refresh: mutate
+  };
+}
+
 // ============================================================================
 // Legacy Proxmox Hooks (backward compatibility)
 // ============================================================================

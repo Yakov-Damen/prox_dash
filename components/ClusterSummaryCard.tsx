@@ -47,32 +47,32 @@ export function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
         </div>
 
 
-        <div className="grid grid-cols-2 gap-4 mt-auto">
-           <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium mb-1">
-                <Cpu size={14} /> CPU Avg
+        <div className="mt-auto grid grid-cols-2 md:grid-cols-3 gap-6 divide-x divide-slate-800/50">
+           <div className="px-4 first:pl-0">
+              <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                <Cpu size={12} /> CPU Avg
               </div>
-              <div className="text-lg font-bold text-slate-200">
-                {cpuUsageAvg.toFixed(1)}%
+              <div className="text-2xl font-bold text-slate-200">
+                {cpuUsageAvg.toFixed(0)}%
               </div>
-              <div className="text-xs text-slate-500">{(cpuUsageAvg / 100 * totalCores).toFixed(2)} / {totalCores} Cores</div>
+              <div className="text-xs text-slate-500 mt-0.5">{(cpuUsageAvg / 100 * totalCores).toFixed(0)} / {totalCores} Cores</div>
            </div>
            
-           <div className="bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">
-              <div className="flex items-center gap-2 text-slate-400 text-xs font-medium mb-1">
-                <Activity size={14} /> Mem Usage
+           <div className="px-4">
+              <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-1">
+                <Activity size={12} /> DRAM
               </div>
-              <div className="text-lg font-bold text-slate-200">
-                {memUsagePercent.toFixed(1)}%
+              <div className="text-2xl font-bold text-slate-200">
+                {memUsagePercent.toFixed(0)}%
               </div>
-              <div className="text-xs text-slate-500">{formatBytesPair(usedMem, totalMem)}</div>
+              <div className="text-xs text-slate-500 mt-0.5">{formatBytesPair(usedMem, totalMem)}</div>
            </div>
 
            {cluster.storage && (
-             <div className="col-span-2 bg-slate-950/50 rounded-lg p-3 border border-slate-800/50">
-                <div className="flex items-center justify-between mb-2">
-                   <div className="flex items-center gap-2 text-slate-400 text-xs font-medium">
-                     <Database size={14} /> {cluster.storage.type.toUpperCase()} Storage
+             <div className="px-4 col-span-2 md:col-span-1 mt-4 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-slate-800/50">
+                <div className="flex items-center justify-between mb-1">
+                   <div className="flex items-center gap-2 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                     <Database size={12} /> {cluster.storage.type}
                    </div>
                    <div className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase", 
                      cluster.storage.health === 'HEALTH_OK' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : 
@@ -83,16 +83,16 @@ export function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
                    </div>
                 </div>
                 {cluster.storage.usage && (
-                  <div className="space-y-1">
-                     <div className="flex items-end justify-between">
-                        <div className="text-lg font-bold text-slate-200">
-                           {((cluster.storage.usage.used / cluster.storage.usage.total) * 100).toFixed(1)}%
-                        </div>
-                        <div className="text-xs text-slate-500 mb-1">
-                           {formatBytes(cluster.storage.usage.used)} / {formatBytes(cluster.storage.usage.total)}
-                        </div>
+                  <div>
+                     <div className="flex items-baseline gap-1.5">
+                        <span className="text-2xl font-bold text-slate-200">
+                           {((cluster.storage.usage.used / cluster.storage.usage.total) * 100).toFixed(0)}%
+                        </span>
+                        <span className="text-xs text-slate-500 truncate">
+                           of {formatBytes(cluster.storage.usage.total)}
+                        </span>
                      </div>
-                     <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                     <div className="h-1 w-full bg-slate-800/50 rounded-full overflow-hidden mt-1.5">
                         <div 
                            className={cn("h-full rounded-full transition-all duration-500", 
                               cluster.storage.health === 'HEALTH_OK' ? "bg-emerald-500" : 
