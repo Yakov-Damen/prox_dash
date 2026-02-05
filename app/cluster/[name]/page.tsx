@@ -19,7 +19,7 @@ export default function ClusterPage() {
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
-             <Link href="/" className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+             <Link href={data?.provider ? `/infrastructure/${data.provider}` : "/"} className="p-2 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
                <ArrowLeft size={20} />
              </Link>
              <div>
