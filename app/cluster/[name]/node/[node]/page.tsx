@@ -2,14 +2,14 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, Box, Monitor, Clock, Cpu, HardDrive, Server } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Box, Monitor, Clock, Cpu, HardDrive, Server, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { VMStatus } from '@/lib/proxmox';
+import { Workload } from '@/lib/providers/types';
 import { StatusBadge } from '@/components/StatusBadge';
-import { useNode, useNodeVMs } from '@/lib/hooks';
+import { useInfraNode, useInfraWorkloads } from '@/lib/hooks';
 import { formatBytes, formatBytesPair } from '@/lib/status-utils';
 
-function VMTable({ vms }: { vms: VMStatus[] }) {
+function WorkloadTable({ workloads }: { workloads: Workload[] }) {
 
   return (
     <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden shadow-lg shadow-black/20">
@@ -18,7 +18,6 @@ function VMTable({ vms }: { vms: VMStatus[] }) {
           <thead>
             <tr className="bg-slate-900/80 border-b border-slate-800 text-slate-400 text-xs uppercase tracking-wider">
               <th className="p-4 font-medium">Status</th>
-              <th className="p-4 font-medium">ID</th>
               <th className="p-4 font-medium">Name</th>
               <th className="p-4 font-medium">Type</th>
               <th className="p-4 font-medium">CPU</th>
@@ -27,52 +26,56 @@ function VMTable({ vms }: { vms: VMStatus[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
-            {vms.map((vm) => (
-              <tr key={vm.vmid} className="hover:bg-slate-800/20 transition-colors">
+            {workloads.map((wl) => (
+              <tr key={wl.id} className="hover:bg-slate-800/20 transition-colors">
                 <td className="p-4">
-                  <StatusBadge status={vm.status} />
+                  <StatusBadge status={wl.status} />
                 </td>
-                <td className="p-4 text-slate-500 font-mono text-sm">{vm.vmid}</td>
-                <td className="p-4 text-slate-200 font-medium">{vm.name}</td>
+                <td className="p-4 text-slate-200 font-medium">
+                  {wl.name}
+                  <div className="text-xs text-slate-600 font-mono mt-0.5">{wl.id}</div>
+                </td>
                 <td className="p-4 text-slate-500 text-sm flex items-center gap-2">
-                   {vm.type === 'qemu' ? <Monitor size={14} /> : <Box size={14} />}
-                   <span className="uppercase">{vm.type}</span>
+                   {(wl.type === 'qemu' || wl.type === 'instance' || wl.type === 'pod') ? <Monitor size={14} /> : <Box size={14} />}
+                   <span className="uppercase">{wl.type}</span>
                 </td>
                 <td className="p-4 text-slate-400 text-sm">
-                   {vm.cpuUsage !== undefined ? (
+                   {wl.cpu.usage !== undefined ? (
                        <div className="flex flex-col">
-                           <span className={cn("font-mono", vm.cpuUsage > 0.8 ? "text-red-400" : "text-slate-300")}>
-                               {(vm.cpuUsage * vm.cpus).toFixed(2)} / {vm.cpus} vCPU
+                           <span className={cn("font-mono", wl.cpu.usage > 0.8 ? "text-red-400" : "text-slate-300")}>
+                               {(wl.cpu.usage * wl.cpu.count).toFixed(2)} / {wl.cpu.count} vCPU
                            </span>
                        </div>
                    ) : (
-                       <span className="text-slate-600">{vm.cpus} vCPU</span>
+                       <span className="text-slate-600">{wl.cpu.count} vCPU</span>
                    )}
                 </td>
                 <td className="p-4 text-slate-400 text-sm">
-                   {vm.status === 'running' ? (
+                   {wl.status === 'running' ? (
                      <div className="flex flex-col">
-                       <span className="text-slate-300">{formatBytesPair(vm.mem, vm.maxmem)}</span>
+                       <span className="text-slate-300">
+                         {wl.memory.used ? formatBytesPair(wl.memory.used, wl.memory.total) : formatBytes(wl.memory.total)}
+                       </span>
                      </div>
                    ) : (
-                       <span className="text-slate-600">{formatBytes(vm.maxmem)}</span>
+                       <span className="text-slate-600">{formatBytes(wl.memory.total)}</span>
                    )}
                 </td>
                 <td className="p-4 text-slate-500 text-sm font-mono">
-                  {vm.status === 'running' ? (
+                  {wl.uptime ? (
                      <span className="flex items-center gap-1.5">
                        <Clock size={12} />
-                       {(vm.uptime / 3600).toFixed(1)}h
+                       {(wl.uptime / 3600).toFixed(1)}h
                      </span>
                   ) : '-'}
                 </td>
               </tr>
             ))}
             
-            {vms.length === 0 && (
+            {workloads.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-12 text-center text-slate-500">
-                  No VMs or Containers found on this node.
+                <td colSpan={6} className="p-12 text-center text-slate-500">
+                  No workloads found on this node.
                 </td>
               </tr>
             )}
@@ -88,14 +91,14 @@ export default function NodePage() {
   const clusterName = decodeURIComponent(params.name as string);
   const nodeName = decodeURIComponent(params.node as string);
   
-  const { data: nodeData, loading: nodeLoading, refresh: refreshNode } = useNode(clusterName, nodeName);
-  const { data: vms, loading: vmsLoading, refresh: refreshVms } = useNodeVMs(clusterName, nodeName);
+  const { data: nodeData, loading: nodeLoading, refresh: refreshNode } = useInfraNode(clusterName, nodeName);
+  const { data: workloads, loading: workloadsLoading, refresh: refreshWorkloads } = useInfraWorkloads(clusterName, nodeName);
 
-  const loading = nodeLoading || vmsLoading;
+  const loading = nodeLoading || workloadsLoading;
   
   const refreshAll = () => {
     refreshNode();
-    refreshVms();
+    refreshWorkloads();
   };
 
   return (
@@ -140,16 +143,23 @@ export default function NodePage() {
                  <Server size={14} /> System
                </h3>
                <div className="space-y-2">
-                 {(nodeData.manufacturer || nodeData.productName) && (
+                 {/* Adapt hardware details to unified format */}
+                 <div className="flex justify-between text-sm">
+                   <span className="text-slate-400">Name</span>
+                   <span className="text-white text-right font-medium">{nodeData.name}</span>
+                 </div>
+                 {nodeData.providerData?.kernelVersion && (
                    <div className="flex justify-between text-sm">
-                     <span className="text-slate-400">Model</span>
-                     <span className="text-white text-right font-medium">{[nodeData.manufacturer, nodeData.productName].filter(Boolean).join(' ')}</span>
+                      <span className="text-slate-400">Kernel</span>
+                      <span className="text-slate-300 text-right">{nodeData.providerData.kernelVersion}</span>
                    </div>
                  )}
-                 <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Kernel</span>
-                    <span className="text-slate-300 text-right">{nodeData.kernelVersion}</span>
-                 </div>
+                  {nodeData.providerData?.osImage && (
+                   <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">OS</span>
+                      <span className="text-slate-300 text-right">{nodeData.providerData.osImage}</span>
+                   </div>
+                 )}
                </div>
              </div>
 
@@ -158,13 +168,15 @@ export default function NodePage() {
                  <Cpu size={14} /> CPU
                </h3>
                <div className="space-y-2">
+                 {nodeData.providerData?.cpuModel && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-400">Model</span>
+                      <span className="text-slate-300 text-right truncate max-w-[200px]" title={nodeData.providerData.cpuModel}>{nodeData.providerData.cpuModel}</span>
+                    </div>
+                 )}
                  <div className="flex justify-between text-sm">
-                   <span className="text-slate-400">Model</span>
-                   <span className="text-slate-300 text-right truncate max-w-[200px]" title={nodeData.cpuModel}>{nodeData.cpuModel}</span>
-                 </div>
-                 <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Sockets / Cores</span>
-                    <span className="text-white text-right font-medium">{nodeData.cpuSockets || '?'} Sockets / {nodeData.cpuCores || nodeData.maxcpu} Cores</span>
+                    <span className="text-slate-400">Usage</span>
+                    <span className="text-white text-right font-medium">{nodeData.cpu.used}/{nodeData.cpu.total} Cores ({(nodeData.cpu.percentage).toFixed(1)}%)</span>
                  </div>
                </div>
              </div>
@@ -176,33 +188,40 @@ export default function NodePage() {
                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="text-xs text-slate-500 mb-1">Mem Used</div>
-                    <div className="text-lg font-bold text-emerald-400">{((nodeData.mem / nodeData.maxmem) * 100).toFixed(1)}%</div>
+                    <div className="text-lg font-bold text-emerald-400">{nodeData.memory.percentage.toFixed(1)}%</div>
                   </div>
-                  <div>
-                    <div className="text-xs text-slate-500 mb-1">CPU Load</div>
-                    <div className="text-lg font-bold text-indigo-400">{((nodeData.cpu) * 100).toFixed(1)}%</div>
-                  </div>
+                  {nodeData.storage ? (
+                    <div>
+                      <div className="text-xs text-slate-500 mb-1">Storage used</div>
+                      <div className="text-lg font-bold text-indigo-400">{nodeData.storage.percentage.toFixed(1)}%</div>
+                    </div>
+                  ) : (
+                     <div>
+                      <div className="text-xs text-slate-500 mb-1">CPU %</div>
+                      <div className="text-lg font-bold text-indigo-400">{nodeData.cpu.percentage.toFixed(1)}%</div>
+                    </div>
+                  )}
                </div>
              </div>
            </div>
         )}
 
-        {/* VM List */}
+        {/* Workload List */}
         <div>
           <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
              <Monitor size={20} className="text-indigo-400" />
-             Virtual Machines & Containers
+             Workloads
              <span className="text-sm font-normal text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800">
-               {vms.length}
+               {workloads ? workloads.length : 0}
              </span>
           </h2>
           
-          {loading && vms.length === 0 ? (
+          {loading && (!workloads || workloads.length === 0) ? (
              <div className="flex justify-center py-20 text-slate-500">
                 <RefreshCw size={30} className="animate-spin mb-2 opacity-50" />
              </div>
           ) : (
-             <VMTable vms={vms} />
+             <WorkloadTable workloads={workloads || []} />
           )}
         </div>
       </div>

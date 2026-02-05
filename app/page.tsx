@@ -1,14 +1,13 @@
 'use client';
 
 
-import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useClusterNames } from '@/lib/hooks';
+import { useInfrastructureNames } from '@/lib/hooks';
 import { ClusterStatusWrapper } from '@/components/ClusterStatusWrapper';
 
 export default function DashboardPage() {
-  const { data: clusterNames, loading, refresh } = useClusterNames();
+  const { data: clusterNames, loading, refresh } = useInfrastructureNames();
 
   // Handle initial scanning state or empty data
   const isLoadingInitial = loading && (!clusterNames || clusterNames.length === 0);

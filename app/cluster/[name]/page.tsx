@@ -2,75 +2,17 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Server, Grid, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
+import { Grid, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { NodeStatus } from '@/lib/proxmox';
-import { ResourceBar } from '@/components/ResourceBar';
-import { StatusBadge } from '@/components/StatusBadge';
-import { GradientCard } from '@/components/GradientCard';
-import { formatBytes, formatBytesPair } from '@/lib/status-utils';
-import { useCluster } from '@/lib/hooks';
-
-
-
-function NodeCard({ node, clusterName }: { node: NodeStatus, clusterName: string }) {
-  return (
-    <Link href={`/cluster/${encodeURIComponent(clusterName)}/node/${node.node}`} className="block">
-      <GradientCard className="group cursor-pointer">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className={cn("p-2.5 rounded-lg border border-slate-800/50 transition-colors group-hover:bg-indigo-500/20 group-hover:text-indigo-300", node.status === 'online' ? "bg-indigo-500/10 text-indigo-400" : "bg-slate-800 text-slate-500")}>
-              <Server size={20} />
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-200 leading-tight group-hover:text-white">{node.node}</h4>
-              <div className="text-[11px] font-medium text-slate-500 mt-0.5">{node.uptime ? `UP: ${(node.uptime / 3600 / 24).toFixed(1)}d` : 'Offline'}</div>
-            </div>
-          </div>
-          <StatusBadge status={node.status} />
-        </div>
-
-        {node.status === 'online' && (
-          <div className="space-y-5">
-            <div className="space-y-4">
-              <ResourceBar 
-                label="CPU" 
-                percentage={node.cpu * 100}
-                displayMain={`${(node.cpu * 100).toFixed(1)}%`}
-                displaySub={`${(node.cpu * (node.maxcpu || 0)).toFixed(2)} / ${node.maxcpu} Cores`}
-                colorClass="bg-indigo-500" 
-              />
-              <ResourceBar 
-                label="Memory" 
-                percentage={(node.mem / node.maxmem) * 100}
-                displayMain={`${((node.mem / node.maxmem) * 100).toFixed(1)}%`}
-                displaySub={formatBytesPair(node.mem, node.maxmem)}
-                colorClass="bg-emerald-500" 
-              />
-              <ResourceBar 
-                label="Storage" 
-                percentage={(node.disk || 0) / (node.maxdisk || 1) * 100}
-                displayMain={`${((node.disk || 0) / (node.maxdisk || 1) * 100).toFixed(1)}%`}
-                displaySub={`${formatBytes(node.disk || 0)} / ${formatBytes(node.maxdisk || 1)}`}
-                colorClass="bg-amber-500" 
-              />
-            </div>
-            
-            <div className="pt-3 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-center gap-2 group-hover:text-indigo-400">
-               <span>View Details & VMs</span>
-            </div>
-          </div>
-        )}
-      </GradientCard>
-    </Link>
-  );
-}
+import { NodeCard } from '@/components/NodeCard';
+import { useInfraCluster } from '@/lib/hooks';
 
 export default function ClusterPage() {
   const params = useParams();
   const clusterName = decodeURIComponent(params.name as string);
   
-  const { data, loading, error, refresh } = useCluster(clusterName);
+  // Use unified hook instead of legacy useCluster
+  const { data, loading, error, refresh } = useInfraCluster(clusterName);
 
   return (
     <main className="min-h-screen bg-slate-950 p-6 md:p-12">
@@ -118,7 +60,12 @@ export default function ClusterPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {data.nodes.map(node => (
-              <NodeCard key={node.id} node={node} clusterName={clusterName} />
+              <NodeCard 
+                key={node.id} 
+                node={node} 
+                clusterName={clusterName}
+                provider={data.provider}
+              />
             ))}
           </div>
         )}

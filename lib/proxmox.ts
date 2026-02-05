@@ -4,14 +4,9 @@
  */
 
 import {
-  ProxmoxClusterConfig as NewProxmoxClusterConfig,
   ProxmoxProvider,
   getProxmoxConfigs,
 } from './providers/proxmox';
-import {
-  LegacyProxmoxNodeStatus,
-  LegacyProxmoxVMStatus,
-} from './providers/types';
 
 // ============================================================================
 // Legacy Type Re-exports (for backward compatibility)

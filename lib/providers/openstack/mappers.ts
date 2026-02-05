@@ -135,7 +135,8 @@ export function mapOpenStackServerToWorkload(
   const addresses: Record<string, Array<{ addr: string; type: string }>> = {};
   if (server.addresses) {
     for (const [network, addrs] of Object.entries(server.addresses)) {
-      addresses[network] = addrs.map((a) => ({
+      const typedAddrs = addrs as Array<{ addr: string; 'OS-EXT-IPS:type'?: string }>;
+      addresses[network] = typedAddrs.map((a) => ({
         addr: a.addr,
         type: a['OS-EXT-IPS:type'] || 'unknown',
       }));
@@ -156,7 +157,7 @@ export function mapOpenStackServerToWorkload(
       total: memoryTotal,
     },
     uptime,
-    metadata: server.metadata,
+    metadata: server.metadata as Record<string, string> | undefined,
     providerData: {
       flavorName,
       flavorId,

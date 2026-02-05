@@ -8,11 +8,22 @@ import {
   Workload,
 } from './types';
 import {
-  ProxmoxProvider,
   createProxmoxProvider,
   getAllProxmoxProviders,
   ProxmoxClusterConfig,
 } from './proxmox';
+import {
+  createKubernetesProvider,
+  KubernetesClusterConfig,
+} from './kubernetes';
+import {
+  createOpenStackProvider,
+  OpenStackClusterConfig,
+} from './openstack';
+import {
+  getKubernetesConfigs,
+  getOpenStackConfigs,
+} from '../config/loader';
 
 // ============================================================================
 // Provider Registry
@@ -53,8 +64,40 @@ export function initializeProviders(): void {
     logger.error({ err: error }, 'Failed to initialize Proxmox providers');
   }
 
-  // TODO: Initialize Kubernetes providers when implemented
-  // TODO: Initialize OpenStack providers when implemented
+  // Initialize Kubernetes providers
+  try {
+    const k8sConfigs = getKubernetesConfigs();
+    for (const config of k8sConfigs) {
+      const provider = createKubernetesProvider(config);
+      providerRegistry.set(provider.name, provider);
+      clusterToProviderMap.set(provider.name, provider.name);
+      logger.debug({ provider: provider.name, type: provider.type }, 'Registered Kubernetes provider');
+    }
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to initialize Kubernetes providers');
+  }
+
+  // Initialize OpenStack providers
+  try {
+    const openStackConfigs = getOpenStackConfigs();
+    for (const config of openStackConfigs) {
+      const provider = createOpenStackProvider(config);
+      providerRegistry.set(provider.name, provider);
+      // For OpenStack, the cluster name includes the region (e.g. "Dev OpenStack/RegionOne")
+      // We need to map that specific cluster name to the provider
+      // BUT getClusters() is async, so we can't do it here easily.
+      // However, getProviderForCluster falls back to checking provider.name, which works for "Dev OpenStack"
+      
+      // We can also try to proactively map the likely cluster name
+      const region = config.regionName || 'default';
+      const clusterName = `${provider.name}/${region}`;
+      clusterToProviderMap.set(clusterName, provider.name);
+      
+      logger.debug({ provider: provider.name, type: provider.type }, 'Registered OpenStack provider');
+    }
+  } catch (error) {
+    logger.error({ err: error }, 'Failed to initialize OpenStack providers');
+  }
 
   initialized = true;
   logger.info({ totalProviders: providerRegistry.size }, 'Provider initialization complete');
@@ -206,7 +249,7 @@ export async function getWorkloads(clusterName: string, nodeName: string): Promi
 /**
  * Provider configuration union type
  */
-export type ProviderConfig = ProxmoxClusterConfig; // | KubernetesConfig | OpenStackConfig
+export type ProviderConfig = ProxmoxClusterConfig | KubernetesClusterConfig | OpenStackClusterConfig;
 
 /**
  * Create a provider instance from configuration
@@ -214,12 +257,11 @@ export type ProviderConfig = ProxmoxClusterConfig; // | KubernetesConfig | OpenS
 export function createProvider(config: ProviderConfig): InfraProvider {
   switch (config.type) {
     case 'proxmox':
-      return createProxmoxProvider(config);
-    // Future providers:
-    // case 'kubernetes':
-    //   return createKubernetesProvider(config);
-    // case 'openstack':
-    //   return createOpenStackProvider(config);
+      return createProxmoxProvider(config as ProxmoxClusterConfig);
+    case 'kubernetes':
+      return createKubernetesProvider(config as KubernetesClusterConfig);
+    case 'openstack':
+      return createOpenStackProvider(config as OpenStackClusterConfig);
     default:
       throw new Error(`Unknown provider type: ${(config as BaseProviderConfig).type}`);
   }

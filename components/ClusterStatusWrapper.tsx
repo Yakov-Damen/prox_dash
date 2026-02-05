@@ -1,11 +1,10 @@
-import { useCluster } from '@/lib/hooks';
+import { useInfraCluster } from '@/lib/hooks';
 import { ClusterSummaryCard } from '@/components/ClusterSummaryCard';
 import { GradientCard } from '@/components/GradientCard';
 import { RefreshCw, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils'; // Assuming you have a utils file
 
 export function ClusterStatusWrapper({ clusterName }: { clusterName: string }) {
-  const { data: cluster, loading, error } = useCluster(clusterName);
+  const { data: cluster, loading, error } = useInfraCluster(clusterName);
 
   if (loading) {
     return (

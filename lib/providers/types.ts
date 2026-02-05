@@ -129,7 +129,7 @@ export const ClusterStatusSchema = z.object({
   version: z.string().optional(),
   error: z.string().optional(),
   storage: ClusterStorageSchema.optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
 });
 
 // ============================================================================
@@ -179,7 +179,7 @@ export const NodeStatusSchema: z.ZodType<NodeStatus> = z.object({
   memory: ResourceMetricSchema,
   storage: ResourceMetricSchema.optional(),
   uptime: z.number().optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
   providerData: z.object({
     // Proxmox
     cpuModel: z.string().optional(),
@@ -271,7 +271,7 @@ export const WorkloadSchema: z.ZodType<Workload> = z.object({
     total: z.number(),
   }),
   uptime: z.number().optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
   providerData: z.any().optional(), // Flexible for provider-specific data
 });
 

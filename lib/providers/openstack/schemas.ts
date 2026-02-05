@@ -54,7 +54,7 @@ export const OpenStackServerSchema = z.object({
   user_id: z.string().optional(),
   created: z.string().optional(),
   updated: z.string().optional(),
-  addresses: z.record(z.array(ServerAddressSchema)).optional(),
+  addresses: z.record(z.string(), z.array(ServerAddressSchema)).optional(),
   flavor: z.union([
     z.object({
       id: z.string(),
@@ -78,7 +78,7 @@ export const OpenStackServerSchema = z.object({
     z.null(),
   ]).optional(),
   key_name: z.string().nullable().optional(),
-  metadata: z.record(z.string()).optional(),
+  metadata: z.record(z.string(), z.string()).optional(),
   'OS-EXT-AZ:availability_zone': z.string().optional(),
   'OS-EXT-SRV-ATTR:host': z.string().nullable().optional(),
   'OS-EXT-SRV-ATTR:hypervisor_hostname': z.string().nullable().optional(),
@@ -225,7 +225,7 @@ export const OpenStackAvailabilityZoneSchema = z.object({
   zoneState: z.object({
     available: z.boolean(),
   }),
-  hosts: z.record(z.record(z.object({
+  hosts: z.record(z.string(), z.record(z.string(), z.object({
     available: z.boolean(),
     active: z.boolean(),
     updated_at: z.string().nullable().optional(),

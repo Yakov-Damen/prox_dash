@@ -1,0 +1,28 @@
+[
+  {
+    "name": "Local Proxmox",
+    "type": "proxmox",
+    "url": "http://localhost:3000/api/mock-proxmox",
+    "tokenId": "user@pam!test",
+    "tokenSecret": "test-secret",
+    "allowInsecure": true,
+    "enabled": true
+  },
+  {
+    "name": "Production K8s",
+    "type": "kubernetes",
+    "kubeConfigPath": "./mock-kubeconfig.yaml",
+    "kubeConfigContext": "mock-context",
+    "enabled": true
+  },
+  {
+    "name": "Dev OpenStack",
+    "type": "openstack",
+    "authUrl": "http://localhost:3000/api/mock-openstack/identity/v3",
+    "region": "RegionOne",
+    "projectName": "mock-project",
+    "username": "admin",
+    "password": "password",
+    "enabled": true
+  }
+]

@@ -90,7 +90,7 @@ export class KubernetesProvider implements InfraProvider {
     } catch (error) {
       logger.error({ error, provider: this.name }, 'Failed to get Kubernetes clusters');
       return [{
-        name: this.contextName,
+        name: this.name,
         provider: 'kubernetes',
         nodes: [],
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -127,7 +127,7 @@ export class KubernetesProvider implements InfraProvider {
       });
 
       return {
-        name: this.contextName,
+        name: this.name,
         provider: 'kubernetes',
         nodes: mappedNodes,
         version,
@@ -139,7 +139,7 @@ export class KubernetesProvider implements InfraProvider {
     } catch (error) {
       logger.error({ error, provider: this.name, cluster: name }, 'Failed to get Kubernetes cluster');
       return {
-        name: this.contextName,
+        name: this.name,
         provider: 'kubernetes',
         nodes: [],
         error: error instanceof Error ? error.message : 'Unknown error',

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request, { params }: { params: Promise<{ node: string, vmid: string }> }) {
-  const { node, vmid } = await params;
+  const { vmid } = await params;
   
   // Return random CPU usage for verification
   const randomCpu = Math.random() * 0.3; // 0-30%

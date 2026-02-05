@@ -4,12 +4,15 @@
 
 // Configuration
 export {
-  OpenStackClusterConfig,
   OpenStackClusterConfigSchema,
   validateOpenStackConfig,
   isPasswordAuth,
   isAppCredAuth,
   OPENSTACK_DEFAULTS,
+} from './config';
+
+export type {
+  OpenStackClusterConfig,
 } from './config';
 
 // Authentication
@@ -23,6 +26,9 @@ export {
   getGlanceEndpoint,
   getNeutronEndpoint,
   hasAdminRole,
+} from './auth';
+
+export type {
   AuthToken,
   ServiceEndpoint,
   ServiceCatalogEntry,
