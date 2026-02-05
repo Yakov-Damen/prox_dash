@@ -133,13 +133,17 @@ export function useInfraWorkloads(clusterName: string, nodeName: string) {
  export interface AggregatedStatus {
   provider: ProviderType;
   totalClusters: number;
+  onlineClusters: number;
   totalNodes: number;
   onlineNodes: number;
   totalCores: number;
+  usedCores: number;
   totalMemory: number;
   usedMemory: number;
   totalStorage: number;
   usedStorage: number;
+  totalCephStorage: number;
+  usedCephStorage: number;
   health: 'healthy' | 'warning' | 'critical';
   cephStatus?: 'healthy' | 'warning' | 'critical' | 'unknown';
 }
@@ -157,13 +161,17 @@ export function useAggregatedStatus() {
       acc[provider] = {
         provider,
         totalClusters: 0,
+        onlineClusters: 0,
         totalNodes: 0,
         onlineNodes: 0,
         totalCores: 0,
+        usedCores: 0,
         totalMemory: 0,
         usedMemory: 0,
         totalStorage: 0,
         usedStorage: 0,
+        totalCephStorage: 0,
+        usedCephStorage: 0,
         health: 'healthy',
         cephStatus: undefined
       };
@@ -171,6 +179,9 @@ export function useAggregatedStatus() {
 
     const stats = acc[provider];
     stats.totalClusters++;
+    if (!cluster.error) {
+      stats.onlineClusters++;
+    }
     
     // Aggregate from nodes
     cluster.nodes.forEach(node => {
@@ -179,6 +190,9 @@ export function useAggregatedStatus() {
         stats.onlineNodes++;
       }
       stats.totalCores += node.cpu.total || 0;
+      // Calculate used cores based on percentage if available
+      stats.usedCores += (node.cpu.percentage / 100) * (node.cpu.total || 0);
+
       stats.totalMemory += node.memory.total || 0;
       stats.usedMemory += node.memory.used || 0;
     });
@@ -190,6 +204,9 @@ export function useAggregatedStatus() {
 
         // Ceph Status Logic (if applicable)
         if (cluster.storage.type === 'ceph') {
+            stats.totalCephStorage += cluster.storage.usage?.total || 0;
+            stats.usedCephStorage += cluster.storage.usage?.used || 0;
+
             // Map 'HEALTH_OK' -> 'healthy', etc.
             let incoming: 'healthy' | 'warning' | 'critical' | 'unknown' = 'unknown';
             const health = cluster.storage.health;

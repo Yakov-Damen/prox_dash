@@ -13,10 +13,10 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-16">
           <div>
-            <h1 className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent pb-1">
-              Global Monitoring
+            <h1 className="text-4xl md:text-6xl font-bold font-display tracking-wide bg-gradient-to-r from-cyan-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent pb-2 neon-text-glow">
+              Global Command
             </h1>
-            <p className="text-slate-400 mt-2 text-lg">Infrastructure Health Overview</p>
+            <p className="text-slate-400 mt-1 text-lg font-display tracking-widest uppercase opacity-80">Infrastructure Health Overview</p>
           </div>
           
           <button 

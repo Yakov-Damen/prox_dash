@@ -1,10 +1,19 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Rajdhani, Outfit } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const rajdhani = Rajdhani({ 
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-rajdhani',
+});
+
+const outfit = Outfit({ 
+  subsets: ['latin'],
+  variable: '--font-outfit',
+});
 
 export const metadata: Metadata = {
   title: 'Proxmox Dashboard',
@@ -18,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className={`${inter.className} bg-slate-950 text-slate-50 min-h-screen selection:bg-indigo-500/30`}>
+      <body className={`${rajdhani.variable} ${outfit.variable} font-sans bg-[#030712] text-slate-50 min-h-screen selection:bg-cyan-500/30`}>
         <GlobalErrorBoundary>
           {children}
           <Toaster theme="dark" position="top-right" />

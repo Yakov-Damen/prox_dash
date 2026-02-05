@@ -225,9 +225,9 @@ export class KubernetesProvider implements InfraProvider {
           metricsMap.set(name, {
             metadata: {
               name,
-              creationTimestamp: item.metadata?.creationTimestamp?.toISOString(),
+              creationTimestamp: item.metadata?.creationTimestamp,
             },
-            timestamp: item.timestamp?.toISOString(),
+            timestamp: item.timestamp,
             window: item.window,
             usage: {
               cpu: item.usage?.cpu || '0',
@@ -262,9 +262,9 @@ export class KubernetesProvider implements InfraProvider {
           metadata: {
             name: item.metadata?.name || '',
             namespace: item.metadata?.namespace || '',
-            creationTimestamp: item.metadata?.creationTimestamp?.toISOString(),
+            creationTimestamp: item.metadata?.creationTimestamp,
           },
-          timestamp: item.timestamp?.toISOString(),
+          timestamp: item.timestamp,
           window: item.window,
           containers: (item.containers || []).map(c => ({
             name: c.name,

@@ -1,5 +1,48 @@
 @import "tailwindcss";
 
+@theme {
+  --font-rajdhani: var(--font-rajdhani);
+  --font-outfit: var(--font-outfit);
+
+  --font-display: var(--font-rajdhani);
+  --font-sans: var(--font-outfit);
+}
+
 @layer base {
-  /* Default reset or base styles if needed */
+  :root {
+    --color-deep-space: #030712;
+    --color-neon-cyan: #06b6d4;
+    --color-neon-violet: #8b5cf6;
+    --color-neon-alert: #ef4444;
+    --color-neon-success: #10b981;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-slate-950/40 backdrop-blur-xl border border-white/10;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.36);
+  }
+
+  .neon-border-cyan {
+    @apply border-cyan-500/50;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+  }
+
+  .neon-border-violet {
+    @apply border-violet-500/50;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
+
+  .neon-text-glow {
+    text-shadow: 0 0 10px currentColor;
+  }
+
+  .holographic-grid {
+    background-size: 40px 40px;
+    background-image:
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  }
 }

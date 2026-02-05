@@ -24,15 +24,15 @@ export default function ClusterPage() {
              </Link>
              <div>
                <div className="flex items-center gap-3">
-                 <h1 className="text-2xl md:text-3xl font-bold text-white">
+                 <h1 className="text-3xl md:text-4xl font-bold text-white font-display tracking-wide neon-text-glow">
                    {clusterName}
                  </h1>
-                 <span className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-bold uppercase tracking-wider">
+                 <span className="px-2 py-0.5 rounded-sm bg-cyan-950/30 text-cyan-400 border border-cyan-500/30 text-xs font-bold uppercase tracking-widest font-display shadow-[0_0_10px_-3px_rgba(6,182,212,0.3)]">
                    Cluster View
                  </span>
                </div>
-               <p className="text-slate-400 mt-1 flex items-center gap-2">
-                 <Grid size={14} /> Nodes Overview
+               <p className="text-slate-400 mt-1 flex items-center gap-2 font-mono text-sm opacity-70">
+                 <Grid size={12} /> NODES_OVERVIEW
                </p>
              </div>
           </div>

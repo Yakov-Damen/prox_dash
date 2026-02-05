@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { GradientCard } from '@/components/GradientCard';
+// GradientCard removed
 import { StatusBadge } from '@/components/StatusBadge';
 import { ResourceBar } from '@/components/ResourceBar';
 import { formatBytes, formatUptime, formatPercentage, getStatusLabel } from '@/lib/status-utils';
@@ -80,105 +80,116 @@ export function NodeCard({ node, clusterName, provider, className }: NodeCardPro
   const providerMetadata = getProviderMetadata(node, provider);
 
   return (
+// NodeCard.tsx implementation
     <Link
       href={`/cluster/${encodeURIComponent(clusterName)}/node/${encodeURIComponent(node.name)}`}
-      className="block"
+      className="block group"
     >
-      <GradientCard className={cn('cursor-pointer', className)}>
-        {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-800 rounded-lg">
-              <Server className="h-5 w-5 text-slate-400" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-100">{node.name}</h3>
-              <p className="text-xs text-slate-500 font-mono">{node.id}</p>
-            </div>
-          </div>
-          <StatusBadge status={getStatusLabel(node.status)} />
-        </div>
+      <div className={cn(
+        "relative overflow-hidden rounded-xl transition-all duration-300",
+        "bg-[#0a0f1e]/60 backdrop-blur-sm border border-white/5",
+        "hover:bg-[#0f1629]/80 hover:border-cyan-500/30 hover:shadow-[0_0_15px_-5px_rgba(6,182,212,0.2)]",
+        className
+      )}>
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 holographic-grid opacity-10 pointer-events-none" />
 
-        {/* Uptime */}
-        {node.uptime !== undefined && node.uptime > 0 && (
-          <div className="flex items-center gap-2 mb-4 text-sm text-slate-400">
-            <Clock className="h-4 w-4" />
-            <span>Uptime: {formatUptime(node.uptime)}</span>
+        <div className="p-5 relative z-10">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-slate-800/50 rounded-lg border border-white/5 text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                <Server className="h-5 w-5" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="text-lg font-display font-medium text-slate-100 tracking-wide group-hover:text-white transition-colors">{node.name}</h3>
+                <p className="text-xs text-slate-500 font-mono tracking-tight">{node.id}</p>
+              </div>
+            </div>
+            <StatusBadge status={getStatusLabel(node.status)} />
           </div>
-        )}
 
-        {/* Resource Bars */}
-        <div className="space-y-3 mb-4">
-          <ResourceBar
-            label="CPU"
-            percentage={node.cpu.percentage}
-            displayMain={formatPercentage(node.cpu.percentage)}
-            displaySub={`${node.cpu.total.toFixed(0)} cores`}
-            colorClass={
-              node.cpu.percentage > 80
-                ? 'bg-red-500'
-                : node.cpu.percentage > 60
-                  ? 'bg-amber-500'
-                  : 'bg-indigo-500'
-            }
-          />
-          <ResourceBar
-            label="Memory"
-            percentage={node.memory.percentage}
-            displayMain={formatBytes(node.memory.used)}
-            displaySub={formatBytes(node.memory.total)}
-            colorClass={
-              node.memory.percentage > 80
-                ? 'bg-red-500'
-                : node.memory.percentage > 60
-                  ? 'bg-amber-500'
-                  : 'bg-emerald-500'
-            }
-          />
-          {node.storage && (
+          {/* Uptime */}
+          {node.uptime !== undefined && node.uptime > 0 && (
+            <div className="flex items-center gap-2 mb-5 text-xs font-mono text-slate-400">
+              <Clock className="h-3 w-3" />
+              <span>UPTIME: {formatUptime(node.uptime).toUpperCase()}</span>
+            </div>
+          )}
+
+          {/* Resource Bars */}
+          <div className="space-y-4 mb-5">
             <ResourceBar
-              label="Storage"
-              percentage={node.storage.percentage}
-              displayMain={formatBytes(node.storage.used)}
-              displaySub={formatBytes(node.storage.total)}
+              label="CPU"
+              percentage={node.cpu.percentage}
+              displayMain={formatPercentage(node.cpu.percentage)}
+              displaySub={`${node.cpu.total.toFixed(0)} cores`}
               colorClass={
-                node.storage.percentage > 80
-                  ? 'bg-red-500'
-                  : node.storage.percentage > 60
-                    ? 'bg-amber-500'
-                    : 'bg-blue-500'
+                node.cpu.percentage > 80
+                  ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                  : node.cpu.percentage > 60
+                    ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                    : 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.4)]'
               }
             />
+            <ResourceBar
+              label="MEM"
+              percentage={node.memory.percentage}
+              displayMain={formatBytes(node.memory.used)}
+              displaySub={formatBytes(node.memory.total)}
+              colorClass={
+                node.memory.percentage > 80
+                  ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                  : node.memory.percentage > 60
+                    ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                    : 'bg-violet-500 shadow-[0_0_8px_rgba(139,92,246,0.4)]'
+              }
+            />
+            {node.storage && (
+              <ResourceBar
+                label="STR"
+                percentage={node.storage.percentage}
+                displayMain={formatBytes(node.storage.used)}
+                displaySub={formatBytes(node.storage.total)}
+                colorClass={
+                  node.storage.percentage > 80
+                    ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'
+                    : node.storage.percentage > 60
+                      ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.4)]'
+                      : 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]'
+                }
+              />
+            )}
+          </div>
+
+          {/* Provider-specific Metadata */}
+          {providerMetadata.length > 0 && (
+            <div className="pt-3 border-t border-white/5">
+              <div className="flex items-center gap-1.5 mb-2.5">
+                <Info className="h-3 w-3 text-slate-500" />
+                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
+                  System Info
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {providerMetadata.map(({ label, value }) => (
+                  <div key={label} className="flex flex-col overflow-hidden">
+                    <span className="text-[9px] text-slate-600 uppercase tracking-wide mb-0.5">{label}</span>
+                    <span className="text-xs text-slate-300 truncate font-mono" title={value}>
+                      {value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* K8s Conditions Warning */}
+          {provider === 'kubernetes' && node.providerData?.conditions && (
+            <K8sConditionsWarning conditions={node.providerData.conditions} />
           )}
         </div>
-
-        {/* Provider-specific Metadata */}
-        {providerMetadata.length > 0 && (
-          <div className="pt-3 border-t border-slate-800">
-            <div className="flex items-center gap-1.5 mb-2">
-              <Info className="h-3 w-3 text-slate-500" />
-              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-medium">
-                Details
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-              {providerMetadata.map(({ label, value }) => (
-                <div key={label} className="flex flex-col overflow-hidden">
-                  <span className="text-[10px] text-slate-500">{label}</span>
-                  <span className="text-xs text-slate-300 truncate" title={value}>
-                    {value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* K8s Conditions Warning */}
-        {provider === 'kubernetes' && node.providerData?.conditions && (
-          <K8sConditionsWarning conditions={node.providerData.conditions} />
-        )}
-      </GradientCard>
+      </div>
     </Link>
   );
 }
