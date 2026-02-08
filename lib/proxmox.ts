@@ -5,8 +5,8 @@
 
 import {
   ProxmoxProvider,
-  getProxmoxConfigs,
 } from './providers/proxmox';
+import { getProxmoxConfigs } from './config/loader';
 
 // ============================================================================
 // Legacy Type Re-exports (for backward compatibility)
