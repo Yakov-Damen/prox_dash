@@ -196,7 +196,7 @@ export class KubernetesProvider implements InfraProvider {
         : pods;
 
       // Try to get pod metrics
-      const metricsMap = await this.getPodMetrics(nodeName);
+      const metricsMap = await this.getPodMetrics();
 
       return mapK8sPodsToWorkloads(filteredPods, metricsMap);
     } catch (error) {
@@ -248,7 +248,7 @@ export class KubernetesProvider implements InfraProvider {
    * Get pod metrics from metrics-server for pods on a specific node
    * Returns empty map if metrics-server is not available
    */
-  private async getPodMetrics(_nodeName: string): Promise<Map<string, K8sPodMetrics>> {
+  private async getPodMetrics(): Promise<Map<string, K8sPodMetrics>> {
     const metricsMap = new Map<string, K8sPodMetrics>();
 
     try {
@@ -343,7 +343,7 @@ export class KubernetesProvider implements InfraProvider {
       }
 
       // Try to get pod metrics
-      const metricsMap = await this.getPodMetrics('');
+      const metricsMap = await this.getPodMetrics();
 
       return mapK8sPodsToWorkloads(pods, metricsMap);
     } catch (error) {

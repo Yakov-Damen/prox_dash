@@ -3,7 +3,7 @@ import { ArrowRight, CheckCircle2, AlertTriangle, Monitor, Server, Database, Box
 import { cn } from '@/lib/utils';
 // GradientCard removed
 import { AggregatedStatus } from '@/lib/hooks';
-import { formatBytes } from '@/lib/status-utils';
+// formatBytes removed
 
 interface EnvironmentCardProps {
   status: AggregatedStatus;

@@ -7,7 +7,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { ResourceBar } from '@/components/ResourceBar';
 import { formatBytes, formatUptime, formatPercentage, getStatusLabel } from '@/lib/status-utils';
 import type { NodeStatus, ProviderType } from '@/lib/providers/types';
-import { Clock, Server, Info } from 'lucide-react';
+import { Clock, Server } from 'lucide-react';
 
 interface NodeCardProps {
   node: NodeStatus;
@@ -17,67 +17,10 @@ interface NodeCardProps {
 }
 
 // Get provider-specific metadata to display
-function getProviderMetadata(
-  node: NodeStatus,
-  provider: ProviderType
-): Array<{ label: string; value: string }> {
-  const metadata: Array<{ label: string; value: string }> = [];
-  const data = node.providerData;
-
-  if (!data) return metadata;
-
-  switch (provider) {
-    case 'proxmox':
-      if (data.manufacturer && data.productName) {
-        metadata.push({ label: 'Hardware', value: `${data.manufacturer} ${data.productName}` });
-      }
-      if (data.cpuModel) {
-        metadata.push({ label: 'CPU', value: data.cpuModel });
-      }
-      if (data.cpuSockets && data.cpuCores) {
-        metadata.push({ label: 'Cores', value: `${data.cpuSockets}s/${data.cpuCores}c` });
-      }
-      if (data.kernelVersion) {
-        metadata.push({ label: 'Kernel', value: data.kernelVersion });
-      }
-      break;
-
-    case 'kubernetes':
-      if (data.kubeletVersion) {
-        metadata.push({ label: 'Kubelet', value: data.kubeletVersion });
-      }
-      if (data.containerRuntime) {
-        metadata.push({ label: 'Runtime', value: data.containerRuntime });
-      }
-      if (data.osImage) {
-        metadata.push({ label: 'OS', value: data.osImage });
-      }
-      if (data.architecture) {
-        metadata.push({ label: 'Arch', value: data.architecture });
-      }
-      if (data.taints && data.taints.length > 0) {
-        metadata.push({ label: 'Taints', value: String(data.taints.length) });
-      }
-      break;
-
-    case 'openstack':
-      if (data.hypervisorType) {
-        metadata.push({ label: 'Hypervisor', value: data.hypervisorType });
-      }
-      if (data.availabilityZone) {
-        metadata.push({ label: 'AZ', value: data.availabilityZone });
-      }
-      if (data.hypervisorHostname) {
-        metadata.push({ label: 'Hostname', value: data.hypervisorHostname });
-      }
-      break;
-  }
-
-  return metadata.slice(0, 4); // Limit to 4 items
-}
+// getProviderMetadata removed
 
 export function NodeCard({ node, clusterName, provider, className }: NodeCardProps) {
-  const providerMetadata = getProviderMetadata(node, provider);
+  // providerMetadata removed
 
   return (
 // NodeCard.tsx implementation
@@ -161,28 +104,6 @@ export function NodeCard({ node, clusterName, provider, className }: NodeCardPro
               />
             )}
           </div>
-
-          {/* Provider-specific Metadata */}
-          {providerMetadata.length > 0 && (
-            <div className="pt-3 border-t border-white/5">
-              <div className="flex items-center gap-1.5 mb-2.5">
-                <Info className="h-3 w-3 text-slate-500" />
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">
-                  System Info
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                {providerMetadata.map(({ label, value }) => (
-                  <div key={label} className="flex flex-col overflow-hidden">
-                    <span className="text-[9px] text-slate-600 uppercase tracking-wide mb-0.5">{label}</span>
-                    <span className="text-xs text-slate-300 truncate font-mono" title={value}>
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* K8s Conditions Warning */}
           {provider === 'kubernetes' && node.providerData?.conditions && (

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Grid, ArrowLeft, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NodeCard } from '@/components/NodeCard';
+import { ResourceSummaryBanner } from '@/components/ResourceSummaryBanner';
 import { useInfraCluster } from '@/lib/hooks';
 
 export default function ClusterPage() {
@@ -58,16 +59,68 @@ export default function ClusterPage() {
              <p>Failed to load cluster.</p>
            </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {data.nodes.map(node => (
-              <NodeCard 
-                key={node.id} 
-                node={node} 
-                clusterName={clusterName}
-                provider={data.provider}
-              />
-            ))}
-          </div>
+          <>
+            {/* Summary Banner */}
+            {(() => {
+              // Calculate aggregates
+              const totalCpuCores = data.nodes.reduce((acc, node) => acc + node.cpu.total, 0);
+              const usedCpuCores = data.nodes.reduce((acc, node) => acc + node.cpu.used, 0);
+              
+              const totalMem = data.nodes.reduce((acc, node) => acc + node.memory.total, 0);
+              const usedMem = data.nodes.reduce((acc, node) => acc + node.memory.used, 0);
+              
+              const totalStorage = data.nodes.reduce((acc, node) => acc + (node.storage?.total || 0), 0);
+              const usedStorage = data.nodes.reduce((acc, node) => acc + (node.storage?.used || 0), 0);
+
+              // Helper for percentages
+              const calcPct = (used: number, total: number) => total > 0 ? (used / total) * 100 : 0;
+
+              // Ceph check
+              const isCeph = data.storage?.type === 'ceph';
+              const cephData = isCeph && data.storage ? {
+                 health: data.storage.health,
+                 usage: data.storage.usage ? {
+                    total: data.storage.usage.total,
+                    used: data.storage.usage.used
+                 } : undefined
+              } : undefined;
+
+              return (
+                <ResourceSummaryBanner 
+                  title={`${clusterName} Overview`}
+                  cpu={{
+                    total: totalCpuCores,
+                    used: usedCpuCores,
+                    percentage: calcPct(usedCpuCores, totalCpuCores)
+                  }}
+                  memory={{
+                    total: totalMem,
+                    used: usedMem,
+                    percentage: calcPct(usedMem, totalMem)
+                  }}
+                  storage={!isCeph ? {
+                    total: totalStorage,
+                    used: usedStorage,
+                    percentage: calcPct(usedStorage, totalStorage)
+                  } : undefined}
+                  ceph={cephData}
+                  entityCount={data.nodes.length}
+                  entityLabel="Nodes"
+                />
+              );
+            })()}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {data.nodes.map(node => (
+                <NodeCard 
+                  key={node.id} 
+                  node={node} 
+                  clusterName={clusterName}
+                  provider={data.provider}
+                />
+              ))}
+            </div>
+          </>
         )}
       </div>
     </main>

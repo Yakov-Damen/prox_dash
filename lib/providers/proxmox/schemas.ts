@@ -58,7 +58,7 @@ export const ProxmoxCpuInfoSchema = z.object({
 export const ProxmoxMemoryInfoSchema = z.object({
   total: z.number(),
   used: z.number(),
-  free: z.number(),
+  free: z.number().optional(),
 });
 
 /**

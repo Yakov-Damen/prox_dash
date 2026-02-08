@@ -2,10 +2,11 @@
 
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, RefreshCw, Box, Monitor, Clock, Cpu, HardDrive, Server, Layers } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Box, Monitor, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Workload } from '@/lib/providers/types';
 import { StatusBadge } from '@/components/StatusBadge';
+import { ResourceSummaryBanner } from '@/components/ResourceSummaryBanner';
 import { useInfraNode, useInfraWorkloads } from '@/lib/hooks';
 import { formatBytes, formatBytesPair } from '@/lib/status-utils';
 
@@ -135,75 +136,37 @@ export default function NodePage() {
           </button>
         </header>
 
-        {/* Node Hardware Summary */}
+        {/* Node Resource Banner */}
         {nodeData && (
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-             <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
-               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                 <Server size={14} /> System
-               </h3>
-               <div className="space-y-2">
-                 {/* Adapt hardware details to unified format */}
-                 <div className="flex justify-between text-sm">
-                   <span className="text-slate-400">Name</span>
-                   <span className="text-white text-right font-medium">{nodeData.name}</span>
-                 </div>
-                 {nodeData.providerData?.kernelVersion && (
-                   <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Kernel</span>
-                      <span className="text-slate-300 text-right">{nodeData.providerData.kernelVersion}</span>
-                   </div>
-                 )}
-                  {nodeData.providerData?.osImage && (
-                   <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">OS</span>
-                      <span className="text-slate-300 text-right">{nodeData.providerData.osImage}</span>
-                   </div>
-                 )}
-               </div>
-             </div>
-
-             <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
-               <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                 <Cpu size={14} /> CPU
-               </h3>
-               <div className="space-y-2">
-                 {nodeData.providerData?.cpuModel && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-400">Model</span>
-                      <span className="text-slate-300 text-right truncate max-w-[200px]" title={nodeData.providerData.cpuModel}>{nodeData.providerData.cpuModel}</span>
-                    </div>
-                 )}
-                 <div className="flex justify-between text-sm">
-                    <span className="text-slate-400">Usage</span>
-                    <span className="text-white text-right font-medium">{nodeData.cpu.used}/{nodeData.cpu.total} Cores ({(nodeData.cpu.percentage).toFixed(1)}%)</span>
-                 </div>
-               </div>
-             </div>
-
-             <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
-                 <HardDrive size={14} /> Resources
-               </h3>
-               <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="text-xs text-slate-500 mb-1">Mem Used</div>
-                    <div className="text-lg font-bold text-emerald-400">{nodeData.memory.percentage.toFixed(1)}%</div>
-                  </div>
-                  {nodeData.storage ? (
-                    <div>
-                      <div className="text-xs text-slate-500 mb-1">Storage used</div>
-                      <div className="text-lg font-bold text-indigo-400">{nodeData.storage.percentage.toFixed(1)}%</div>
-                    </div>
-                  ) : (
-                     <div>
-                      <div className="text-xs text-slate-500 mb-1">CPU %</div>
-                      <div className="text-lg font-bold text-indigo-400">{nodeData.cpu.percentage.toFixed(1)}%</div>
-                    </div>
-                  )}
-               </div>
-             </div>
-           </div>
+           <ResourceSummaryBanner 
+             title={`${nodeName} Overview`}
+             cpu={{
+               total: nodeData.cpu?.total || 0,
+               used: nodeData.cpu?.used || 0,
+               percentage: nodeData.cpu?.percentage || 0
+             }}
+             memory={{
+               total: nodeData.memory?.total || 0,
+               used: nodeData.memory?.used || 0,
+               percentage: nodeData.memory?.percentage || 0
+             }}
+             storage={nodeData.storage ? {
+               total: nodeData.storage.total || 0,
+               used: nodeData.storage.used || 0,
+               percentage: nodeData.storage.percentage || 0
+             } : undefined}
+             systemInfo={{
+               name: nodeData.name || nodeName,
+               kernel: nodeData.providerData?.kernelVersion,
+               os: nodeData.providerData?.osImage,
+               cpuModel: nodeData.providerData?.cpuModel,
+               manufacturer: nodeData.providerData?.manufacturer,
+               productName: nodeData.providerData?.productName,
+               uptime: nodeData.uptime
+             }}
+             entityCount={workloads ? workloads.length : 0}
+             entityLabel="Workloads"
+           />
         )}
 
         {/* Workload List */}

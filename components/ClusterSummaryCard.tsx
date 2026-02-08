@@ -3,7 +3,7 @@ import { Activity, Cpu, LayoutGrid, Database, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ClusterStatus } from '@/lib/providers/types';
 import { GradientCard } from '@/components/GradientCard';
-import { formatBytes, formatBytesPair } from '@/lib/status-utils';
+import { formatBytesPair } from '@/lib/status-utils';
 
 export function ClusterSummaryCard({ cluster }: { cluster: ClusterStatus }) {
   const totalNodes = cluster.nodes.length;
