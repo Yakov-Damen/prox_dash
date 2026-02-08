@@ -28,11 +28,7 @@ import {
 // Configuration Loading
 // ============================================================================
 
-const CONFIG_PATH = path.join(process.cwd(), 'proxmox_config.json');
 const INVENTORY_PATH = path.join(process.cwd(), 'hardware_inventory.json');
-
-// In-memory cache for configs
-let cachedConfigs: ProxmoxClusterConfig[] | null = null;
 
 interface HardwareInfo {
   manufacturer?: string;
@@ -41,34 +37,9 @@ interface HardwareInfo {
 let cachedInventory: Record<string, Record<string, HardwareInfo>> | null = null;
 
 /**
- * Load all Proxmox cluster configurations from the config file
- */
-export function getProxmoxConfigs(): ProxmoxClusterConfig[] {
-  if (cachedConfigs) return cachedConfigs;
-
-  try {
-    if (!fs.existsSync(CONFIG_PATH)) {
-      logger.warn({ path: CONFIG_PATH }, 'Proxmox config file not found');
-      return [];
-    }
-    const fileContent = fs.readFileSync(CONFIG_PATH, 'utf-8');
-    const rawConfigs = JSON.parse(fileContent) as unknown[];
-
-    const configs = rawConfigs.map((config) => parseProxmoxConfig(config));
-    logger.debug({ count: configs.length }, 'Loaded Proxmox cluster configs');
-    cachedConfigs = configs;
-    return configs;
-  } catch (error) {
-    logger.error({ err: error }, 'Error reading Proxmox config');
-    return [];
-  }
-}
-
-/**
- * Clear the config cache (useful for testing or hot-reloading)
+ * Clear the inventory cache (useful for testing or hot-reloading)
  */
 export function clearConfigCache(): void {
-  cachedConfigs = null;
   cachedInventory = null;
 }
 
@@ -593,12 +564,4 @@ export function createProxmoxProviderFromLegacy(
   config: LegacyProxmoxConfig
 ): InfraProvider {
   return new ProxmoxProvider(parseProxmoxConfig(config));
-}
-
-/**
- * Get all configured Proxmox providers
- */
-export function getAllProxmoxProviders(): InfraProvider[] {
-  const configs = getProxmoxConfigs();
-  return configs.map((config) => createProxmoxProvider(config));
 }

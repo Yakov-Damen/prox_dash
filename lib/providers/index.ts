@@ -9,7 +9,6 @@ import {
 } from './types';
 import {
   createProxmoxProvider,
-  getAllProxmoxProviders,
   ProxmoxClusterConfig,
 } from './proxmox';
 import {
@@ -23,6 +22,7 @@ import {
 import {
   getKubernetesConfigs,
   getOpenStackConfigs,
+  getProxmoxConfigs,
 } from '../config/loader';
 
 // ============================================================================
@@ -52,14 +52,15 @@ export function initializeProviders(): void {
 
   // Initialize Proxmox providers
   try {
-    const proxmoxProviders = getAllProxmoxProviders();
-    for (const provider of proxmoxProviders) {
+    const proxmoxConfigs = getProxmoxConfigs();
+    for (const config of proxmoxConfigs) {
+      const provider = createProxmoxProvider(config);
       providerRegistry.set(provider.name, provider);
       // For Proxmox, the provider name is the cluster name
       clusterToProviderMap.set(provider.name, provider.name);
       logger.debug({ provider: provider.name, type: provider.type }, 'Registered provider');
     }
-    logger.info({ count: proxmoxProviders.length }, 'Initialized Proxmox providers');
+    logger.info({ count: proxmoxConfigs.length }, 'Initialized Proxmox providers');
   } catch (error) {
     logger.error({ err: error }, 'Failed to initialize Proxmox providers');
   }

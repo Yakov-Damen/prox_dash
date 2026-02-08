@@ -37,7 +37,5 @@ export {
   ProxmoxProvider,
   createProxmoxProvider,
   createProxmoxProviderFromLegacy,
-  getProxmoxConfigs,
-  getAllProxmoxProviders,
   clearConfigCache,
 } from './client';
