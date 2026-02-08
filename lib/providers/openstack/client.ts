@@ -13,6 +13,7 @@ import {
   AuthToken,
   clearTokenCache,
 } from './auth';
+import { logger } from '../../logger';
 import {
   OpenStackServersResponseSchema,
   OpenStackHypervisorsResponseSchema,
@@ -80,6 +81,12 @@ export class OpenStackProvider implements InfraProvider {
       },
     });
 
+    logger.debug({ 
+      method: options.method || 'GET', 
+      url, 
+      status: response.status 
+    }, 'OpenStack API Request');
+
     if (!response.ok) {
       // Clear token cache on auth failures
       if (response.status === 401) {
@@ -87,6 +94,13 @@ export class OpenStackProvider implements InfraProvider {
       }
 
       const errorText = await response.text().catch(() => 'Unknown error');
+      logger.error({ 
+        status: response.status, 
+        statusText: response.statusText, 
+        error: errorText,
+        url
+      }, 'OpenStack API Error');
+
       throw new Error(
         `OpenStack API error: ${response.status} ${response.statusText} - ${errorText}`
       );
@@ -132,7 +146,7 @@ export class OpenStackProvider implements InfraProvider {
       this.flavorsLastFetched = now;
     } catch (error) {
       // Log but don't fail - flavors are used for enrichment only
-      console.warn('Failed to fetch flavors:', error);
+      logger.warn({ err: error }, 'Failed to fetch flavors');
     }
 
     return this.cachedFlavors;
@@ -169,7 +183,8 @@ export class OpenStackProvider implements InfraProvider {
       const data = await this.request<unknown>(`/os-hypervisors/${idOrHostname}`);
       const parsed = OpenStackHypervisorDetailResponseSchema.parse(data);
       return parsed.hypervisor;
-    } catch {
+    } catch (error) {
+      logger.debug({ err: error, id: idOrHostname }, 'Failed to fetch hypervisor by ID');
       // If ID lookup fails, try searching by hostname
       try {
         const searchData = await this.request<unknown>(
@@ -184,8 +199,9 @@ export class OpenStackProvider implements InfraProvider {
           const detailParsed = OpenStackHypervisorDetailResponseSchema.parse(detailData);
           return detailParsed.hypervisor;
         }
-      } catch {
+      } catch (error) {
         // Search also failed
+        logger.debug({ err: error, hostname: idOrHostname }, 'Failed to search hypervisor by hostname');
       }
 
       return null;
@@ -207,7 +223,8 @@ export class OpenStackProvider implements InfraProvider {
       const data = await this.request<unknown>('/limits');
       const parsed = OpenStackLimitsSchema.parse(data);
       return parsed.limits.absolute;
-    } catch {
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to fetch limits');
       return {};
     }
   }
@@ -240,10 +257,13 @@ export class OpenStackProvider implements InfraProvider {
         ok: true,
         message: `Connected to ${this.config.projectName} (${isAdmin ? 'admin' : 'member'})`,
       };
+
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error({ err }, 'OpenStack connection test failed');
       return {
         ok: false,
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: err.message,
       };
     }
   }
@@ -284,13 +304,16 @@ export class OpenStackProvider implements InfraProvider {
           },
         },
       ];
+
     } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error({ err }, 'Failed to get OpenStack clusters');
       return [
         {
           name: this.getClusterName(),
           provider: 'openstack',
           nodes: [],
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: err.message,
         },
       ];
     }
@@ -381,7 +404,7 @@ export class OpenStackProvider implements InfraProvider {
 
       return mapServersToWorkloads(filteredServers, flavors);
     } catch (error) {
-      console.error(`Failed to get workloads for ${clusterName}/${nodeName}:`, error);
+      logger.error({ err: error, cluster: clusterName, node: nodeName }, 'Failed to get workloads for node');
       return [];
     }
   }
