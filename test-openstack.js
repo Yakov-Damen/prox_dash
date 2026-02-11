@@ -6,14 +6,20 @@
  * Tests the same authentication flow used by the app
  */
 
+// ============================================================================
+// EDIT THIS CONFIG TO TEST YOUR OPENSTACK CONNECTION
+// ============================================================================
 const config = {
-  authUrl: 'http://localhost:3000/api/mock-openstack/identity/v3',
-  projectName: 'mock-project',
-  username: 'admin',
-  password: 'password',
-  userDomainName: 'Default',
-  projectDomainName: 'Default',
-  region: 'RegionOne',
+  // Required fields
+  authUrl: process.env.OS_AUTH_URL || 'http://localhost:3000/api/mock-openstack/identity/v3',
+  projectName: process.env.OS_PROJECT_NAME || 'mock-project',
+  username: process.env.OS_USERNAME || 'admin',
+  password: process.env.OS_PASSWORD || 'password',
+
+  // Optional fields (defaults match OpenStack CLI defaults)
+  userDomainName: process.env.OS_USER_DOMAIN_NAME || 'Default',
+  projectDomainName: process.env.OS_PROJECT_DOMAIN_NAME || 'Default',
+  region: process.env.OS_REGION_NAME || null,  // null = use any region
 };
 
 async function testConnection() {
@@ -73,7 +79,7 @@ async function testConnection() {
     const novaService = body.token?.catalog?.find(s => s.type === 'compute');
     const novaEndpoint = novaService?.endpoints?.find(
       e => e.interface === 'public' && (!config.region || e.region_id === config.region)
-    );
+    ) || novaService?.endpoints?.find(e => e.interface === 'public');  // Fallback to any public endpoint
 
     if (!novaEndpoint) {
       console.error('  ❌ Nova endpoint not found in service catalog');
