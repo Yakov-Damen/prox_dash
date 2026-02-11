@@ -68,7 +68,7 @@ export interface OpenStackConfig extends BaseProviderConfig {
   /**
    * Region name (optional)
    */
-  regionName?: string;
+  region?: string;
   /**
    * Skip TLS certificate verification
    */

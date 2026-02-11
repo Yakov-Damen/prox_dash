@@ -90,7 +90,7 @@ export function initializeProviders(): void {
       // However, getProviderForCluster falls back to checking provider.name, which works for "Dev OpenStack"
       
       // We can also try to proactively map the likely cluster name
-      const region = config.regionName || 'default';
+      const region = config.region || 'default';
       const clusterName = `${provider.name}/${region}`;
       clusterToProviderMap.set(clusterName, provider.name);
       

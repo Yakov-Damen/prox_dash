@@ -50,7 +50,7 @@ export const OpenStackConfigSchema = z.object({
   password: z.string().min(1, 'Password is required'),
   userDomainName: z.string().optional().default('Default'),
   projectDomainName: z.string().optional().default('Default'),
-  regionName: z.string().optional(),
+  region: z.string().optional(),
   allowInsecure: z.boolean().optional().default(false),
 });
 
